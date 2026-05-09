@@ -14,6 +14,7 @@
         <OutputPath>bin\</OutputPath>
         <!-- <DefineConstants>DEBUG;TRACE</DefineConstants> -->
         <WarningLevel>4</WarningLevel>
+        <NoWarn>CS1591;SYSLIB1054;CA1822</NoWarn>
         <Nullable>enable</Nullable>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <SatelliteResourceLanguages>none</SatelliteResourceLanguages>
@@ -22,26 +23,7 @@
         
     </PropertyGroup>
 
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      <NoWarn>CS1591;SYSLIB1054;CA1822</NoWarn>
-    </PropertyGroup>
-
-    <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-      <NoWarn>CS1591;SYSLIB1054;CA1822</NoWarn>
-    </PropertyGroup>
-
     <ItemGroup>
-      <Compile Remove="_old\**" />
-      <EmbeddedResource Remove="_old\**" />
-      <None Remove="_old\**" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <Compile Remove="MainForm2.cs" />
-      <Compile Remove="MainForm_1.cs" />
-      <Compile Remove="Clip_orig.cs" />
-      <Compile Remove="MainForm_2.cs" />
-      <Compile Remove="MainForm_orig.cs" />
       <Compile Remove="_temp.cs" />
     </ItemGroup>
 
@@ -64,21 +46,6 @@
         <Reference Include="Ephemera.Win32">
           <HintPath>lib\Ephemera.Win32.dll</HintPath>
         </Reference>
-    </ItemGroup>
-
-    <ItemGroup>
-      <Compile Update="Properties\Resources.Designer.cs">
-        <DesignTime>True</DesignTime>
-        <AutoGen>True</AutoGen>
-        <DependentUpon>Resources.resx</DependentUpon>
-      </Compile>
-    </ItemGroup>
-
-    <ItemGroup>
-      <EmbeddedResource Update="Properties\Resources.resx">
-        <Generator>ResXFileCodeGenerator</Generator>
-        <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-      </EmbeddedResource>
     </ItemGroup>
 
 </Project>
