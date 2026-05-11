@@ -34,6 +34,13 @@ namespace WinClip
     /// </summary>
     public partial class MainForm : Form
     {
+        #region Types
+        record struct WindowInfo(IntPtr Hwnd, int ProcessId, string ProcessName, string Title, bool IsVisible)
+        {
+            public override readonly string ToString() { return $"hwnd:0X{Hwnd:X8} proc:{ProcessId:X8}[{ProcessName}] title:[{Title}] vis:{IsVisible}"; }
+        };
+        #endregion
+
         #region Fields
         /// <summary>App logger.</summary>
         readonly Logger _logger = LogManager.CreateLogger("APP");
@@ -391,7 +398,7 @@ namespace WinClip
                 int col = i % numGridColumns;
 
                 int xloc = xinc * col + pad;
-                int yloc = yinc * row + btnDebug.Bottom + pad;
+                int yloc = yinc * row + pad;
 
                 _clips[i].Location = new Point(xloc, yloc);
                 yloc += yinc;
@@ -513,11 +520,4 @@ namespace WinClip
         private static extern uint GetClipboardSequenceNumber();
         #endregion
     }
-
-    #region Types
-    record struct WindowInfo(IntPtr Hwnd, int ProcessId, string ProcessName, string Title, bool IsVisible)
-    {
-        public override readonly string ToString() { return $"hwnd:0X{Hwnd:X8} proc:{ProcessId:X8}[{ProcessName}] title:[{Title}] vis:{IsVisible}"; }
-    };
-    #endregion
 }

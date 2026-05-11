@@ -1,0 +1,290 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Ephemera.IconicSelector</name>
+    </assembly>
+    <members>
+        <member name="T:Ephemera.IconicSelector.SelectorStyle">
+            <summary>Supported styles.</summary>
+        </member>
+        <member name="T:Ephemera.IconicSelector.MouseFunction">
+            <summary></summary>
+        </member>
+        <member name="T:Ephemera.IconicSelector.SelectionEventArgs">
+            <summary>User selection(s) have changed.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.SelectionEventArgs.SelectedItems">
+            <summary>The selection</summary>
+        </member>
+        <member name="T:Ephemera.IconicSelector.DroppedTargetEventArgs">
+            <summary>User drag-dropped something from elsewhere.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.DroppedTargetEventArgs.NewItem">
+            <summary>The new item</summary>
+        </member>
+        <member name="T:Ephemera.IconicSelector.Item">
+            <summary></summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Item.Caption">
+            <summary>Displayed text</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Item.Bitmap">
+            <summary>Associated image or null if not available</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Item.Value">
+            <summary>Meaningful for client use</summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Item.#ctor(System.String,System.Drawing.Bitmap,System.Object)">
+            <summary>Normal constructor</summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Item.#ctor(Ephemera.IconicSelector.Item)">
+            <summary>Copy constructor</summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Item.Dispose">
+            <summary>Clean up</summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Item.ToString">
+            <summary>Read me</summary>
+        </member>
+        <member name="T:Ephemera.IconicSelector.ItemDisplay">
+            <summary>
+            One selectable item.
+            Differentiates DragAndDrop from simple click.
+            </summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.ItemDisplay.Item">
+            <summary>The owned item.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.ItemDisplay.ImageLoc">
+            <summary>Geometry.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.ItemDisplay.TextRect">
+            <summary>Geometry.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.ItemDisplay.TargetColor">
+            <summary>Cosmetics.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.ItemDisplay.Selected">
+            <summary></summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.ItemDisplay.IsTarget">
+            <summary></summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.#ctor(Ephemera.IconicSelector.Item)">
+            <summary>
+            Constructor.
+            </summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.Dispose(System.Boolean)">
+            <summary>
+             Clean up any resources being used.
+            </summary>
+            <param name="disposing">True if managed resources should be disposed.</param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.ToString">
+            <summary>Read me</summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.OnMouseDown(System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            
+            </summary>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.OnMouseMove(System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            
+            </summary>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.OnMouseUp(System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            
+            </summary>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.ItemDisplay.OnPaint(System.Windows.Forms.PaintEventArgs)">
+            <summary>
+            Draw me.
+            </summary>
+            <param name="pe"></param>
+        </member>
+        <member name="T:Ephemera.IconicSelector.Selector">
+            <summary>Master control.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.LeftMouseClick">
+            <summary>What the mouse click does.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.AllowExternalDrop">
+            <summary>Allow drag and drop (files) from other applications.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.ImageSize">
+            <summary>Image size.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.DrawFont">
+            <summary>Cosmetics.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.TargetColor">
+            <summary>Cosmetics.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.Pad">
+            <summary>Visual space at edges.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.Spacing">
+            <summary>Space between items</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.Selector._style">
+            <summary>Current config.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.Selector._itemds">
+            <summary>All entries in the collection.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.Selector._defaultImage">
+            <summary>If no valid image available.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.Selector._itemdImageRect">
+            <summary>ItemDisplay geometry.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.Selector._itemdTextRect">
+            <summary>ItemDisplay geometry.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.Selector._itemdSize">
+            <summary>ItemDisplay geometry.</summary>
+        </member>
+        <member name="E:Ephemera.IconicSelector.Selector.Selection">
+            <summary></summary>
+        </member>
+        <member name="E:Ephemera.IconicSelector.Selector.DroppedTarget">
+            <summary></summary>
+        </member>
+        <member name="E:Ephemera.IconicSelector.Selector.Trace">
+            <summary>Debug hook</summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.#ctor">
+            <summary>
+            Constructor.
+            </summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Init(Ephemera.IconicSelector.SelectorStyle)">
+            <summary>
+            Constructor.
+            </summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Dispose(System.Boolean)">
+            <summary>
+             Clean up any resources being used.
+            </summary>
+            <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.AddItem(System.String,System.Drawing.Bitmap,System.Object,System.Int32)">
+            <summary>
+            Add a new item. If insertion mark is visible, insert there, otherwise append.
+            </summary>
+            <param name="text">For display below/next to image</param>
+            <param name="bmp">Bitmap</param>
+            <param name="value">Meaningful for client use</param>
+            <param name="index">Where to insert. -1 is append</param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.RemoveItem(System.Int32)">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.RemoveSelectedItems">
+            <summary>
+            
+            </summary>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.GetItems">
+            <summary>
+            Get all items.
+            </summary>
+            <returns>Items.</returns>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Dump">
+            <summary>
+            Diagnostic.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.OnPaint(System.Windows.Forms.PaintEventArgs)">
+            <summary>
+            Draw the whole control.
+            </summary>
+            <param name="pe"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Itemd_DoMouseClick(System.Object,System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            User item selection(s).
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Itemd_StartDragDrop(System.Object,System.Windows.Forms.MouseEventArgs)">
+            <summary>
+            Starts the drag-and-drop operation when an item is dragged.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragEnter(System.Object,System.Windows.Forms.DragEventArgs)">
+            <summary>
+            Sets the target drop effect.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragOver(System.Object,System.Windows.Forms.DragEventArgs)">
+            <summary>
+            Moves the insertion mark as the item is dragged.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragLeave(System.Object,System.EventArgs)">
+            <summary>
+            Removes the insertion mark when the mouse leaves the control.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>d
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragDrop(System.Object,System.Windows.Forms.DragEventArgs)">
+            <summary>
+            Moves the item to the location of the insertion mark.
+            Handles drag sources of internal items and external files.
+            </summary>
+            <param name="sender"></param>
+            <param name="e"></param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.SetTarget(System.Int32)">
+            <summary>
+            Set the target property for specific item. Clears all others.
+            </summary>
+            <param name="index">If -1 clear all</param>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.GetItemd(System.Object)">
+            <summary>
+            Get the item safely.
+            </summary>
+            <param name="item">ItemDisplay to test</param>
+            <returns>The item if valid</returns>
+            <exception cref="T:System.ArgumentNullException"></exception>
+            <exception cref="T:System.ArgumentException"></exception>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.GetItemIndex(System.Object)">
+            <summary>
+            Get the index in the collection
+            </summary>
+            <param name="item">ItemDisplay to test</param>
+            <returns>Index or -1 if invalid</returns>
+            <exception cref="T:System.ArgumentNullException"></exception>
+            <exception cref="T:System.ArgumentException"></exception>
+        </member>
+        <member name="M:Ephemera.IconicSelector.Selector.RemoveItem(Ephemera.IconicSelector.ItemDisplay)">
+            <summary>
+            Remove this item.
+            </summary>
+            <param name="itemd"></param>
+            <exception cref="T:System.ArgumentNullException"></exception>
+        </member>
+    </members>
+</doc>

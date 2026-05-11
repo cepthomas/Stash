@@ -24,10 +24,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <Compile Remove="_temp.cs" />
-    </ItemGroup>
-
-    <ItemGroup>
       <Content Include="canard.ico" />
     </ItemGroup>
 
