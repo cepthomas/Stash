@@ -14,12 +14,12 @@ namespace WinClip
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(MainForm));
             toolStrip1 = new System.Windows.Forms.ToolStrip();
             BtnSettings = new System.Windows.Forms.ToolStripButton();
+            toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
             BtnDebug = new System.Windows.Forms.ToolStripButton();
             toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
-            toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
+            selector = new Ephemera.IconicSelector.Selector();
             toolStrip1.SuspendLayout();
             SuspendLayout();
             // 
@@ -29,7 +29,7 @@ namespace WinClip
             toolStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] { BtnSettings, toolStripSeparator2, BtnDebug, toolStripSeparator1 });
             toolStrip1.Location = new System.Drawing.Point(0, 0);
             toolStrip1.Name = "toolStrip1";
-            toolStrip1.Size = new System.Drawing.Size(559, 26);
+            toolStrip1.Size = new System.Drawing.Size(321, 26);
             toolStrip1.TabIndex = 16;
             toolStrip1.Text = "toolStrip1";
             // 
@@ -41,6 +41,11 @@ namespace WinClip
             BtnSettings.Size = new System.Drawing.Size(62, 23);
             BtnSettings.Text = "Settings";
             BtnSettings.Click += Settings_Click;
+            // 
+            // toolStripSeparator2
+            // 
+            toolStripSeparator2.Name = "toolStripSeparator2";
+            toolStripSeparator2.Size = new System.Drawing.Size(6, 26);
             // 
             // BtnDebug
             // 
@@ -56,15 +61,28 @@ namespace WinClip
             toolStripSeparator1.Name = "toolStripSeparator1";
             toolStripSeparator1.Size = new System.Drawing.Size(6, 26);
             // 
-            // toolStripSeparator2
+            // selector
             // 
-            toolStripSeparator2.Name = "toolStripSeparator2";
-            toolStripSeparator2.Size = new System.Drawing.Size(6, 26);
+            selector.AllowDrop = true;
+            selector.AllowExternalDrop = false;
+            selector.AutoScroll = true;
+            selector.Dock = System.Windows.Forms.DockStyle.Fill;
+            selector.DrawFont = new System.Drawing.Font("Calibri", 11F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, 0);
+            selector.ImageSize = 32;
+            selector.LeftMouseClick = Ephemera.IconicSelector.MouseFunction.Click;
+            selector.Location = new System.Drawing.Point(0, 26);
+            selector.Name = "selector";
+            selector.Pad = 4;
+            selector.Size = new System.Drawing.Size(321, 572);
+            selector.Spacing = 10;
+            selector.TabIndex = 17;
+            selector.TargetColor = System.Drawing.Color.Aqua;
             // 
             // MainForm
             // 
             AutoScroll = true;
-            ClientSize = new System.Drawing.Size(559, 598);
+            ClientSize = new System.Drawing.Size(321, 598);
+            Controls.Add(selector);
             Controls.Add(toolStrip1);
             FormBorderStyle = System.Windows.Forms.FormBorderStyle.SizableToolWindow;
             Name = "MainForm";
@@ -83,5 +101,6 @@ namespace WinClip
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
         private System.Windows.Forms.ToolStripButton BtnDebug;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
+        private Ephemera.IconicSelector.Selector selector;
     }
 }

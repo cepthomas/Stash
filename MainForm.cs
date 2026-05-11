@@ -95,6 +95,28 @@ namespace WinClip
             //ShowInTaskbar = false;
             //Visible = false; // doesn't work
 
+            // Init selector properties.
+            selector.ImageSize = _settings.ImageSize;
+            selector.TargetColor = _settings.MarkerColor;
+            selector.DrawFont = _settings.TileFont;
+            selector.LeftMouseClick = MouseFunction.Click;
+            selector.AllowExternalDrop = true;
+            // Build it.
+            selector.Init(_settings.Style);
+
+            // Hook selector events.
+            selector.Selection += Selector_Selection;
+            selector.DroppedTarget += Selector_DroppedTarget;
+
+            // Selector menu.
+            selector.ContextMenuStrip = new();
+            selector.ContextMenuStrip.Items.Add("Add File");
+            selector.ContextMenuStrip.Items.Add("Add Folder");
+            selector.ContextMenuStrip.Items.Add("Paste");
+            selector.ContextMenuStrip.Items.Add("Remove");
+            selector.ContextMenuStrip.ItemClicked += Menu_ItemClicked;
+
+
             ///// System hooks.
             // Listen for window changes.
             _winEventHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero,
@@ -135,7 +157,7 @@ namespace WinClip
 
             if (disposing)
             {
-                // OK to use any private object references. Dispose managed state (managed objects).
+                selector?.Dispose();
                 components.Dispose();
             }
 
@@ -148,6 +170,138 @@ namespace WinClip
             base.Dispose(disposing);
         }
         #endregion
+
+        #region Selector /////////////////////////// selector //////////////////////
+        /// <summary>
+        /// User wants to do something.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void Menu_ItemClicked(object? sender, ToolStripItemClickedEventArgs e)
+        {
+            selector.ContextMenuStrip!.Close();
+            //int index = selector.SelectedIndexes.Count > 0 ? selector.SelectedIndexes[0] : -1;
+
+            switch (e.ClickedItem!.Text)
+            {
+                case "Add File":
+                case "Add Folder":
+                    CommonOpenFileDialog dialog = new()
+                    {
+                        InitialDirectory = @"%APPDATA%\Microsoft\Windows\Start Menu\Programs", // TODO from where?
+                        IsFolderPicker = e.ClickedItem!.Text == "Add Folder"
+                    };
+                    if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
+                    {
+                        AddTarget(dialog.FileName);
+                    }
+                    break;
+
+                case "Paste":
+                    AddTarget(Clipboard.GetText());
+                    break;
+
+                case "Remove":
+                    selector.RemoveSelectedItems();
+                    break;
+            }
+        }
+
+
+
+        /// <summary>
+        /// Something external was dropped onto the control. We only care about a few.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void Selector_DroppedTarget(object? sender, Ephemera.IconicSelector.DroppedTargetEventArgs e)
+        {
+            _logger.Info($"Dropped item -> [{e.NewItem}]");
+        }
+
+
+
+        /// <summary>
+        /// Add an item.
+        /// </summary>
+        /// <param name="target"></param>
+        void AddTarget(Target target)
+        {
+            string text = "???";
+            string targetname = target.Name;
+            string targetnamelc = targetname.ToLower();
+            string fulltargetname = "";
+            Bitmap image = _defaultImage;
+            if (fulltargetname != "")
+            {
+                selector.AddItem(text, image, fulltargetname);
+            }
+        }
+
+        /// <summary>
+        /// Add an item.
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="group"></param>
+        void AddTarget(string name, string group = "")
+        {
+            AddTarget(new(){ Name = name, Group = group });
+        }
+
+        /// <summary>
+        /// User made a selection. Execute it.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void Selector_Selection(object? sender, Ephemera.IconicSelector.SelectionEventArgs e)
+        {
+            //_logger.Info($"Selection -> [{e.Entry.Text}] [{e.Entry.ImageName}] [{e.Entry.Tag}]");
+
+            foreach (var sel in e.SelectedItems)
+            {
+                ProcessStartInfo pinfo = new("cmd", ["/C", sel.Value.ToString()!])
+                {
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                };
+
+                try
+                {
+                    using Process proc = new() { StartInfo = pinfo };
+                    proc.Start();
+
+                    // TIL: To avoid deadlocks, always read the output stream first and then wait.
+                    var stdout = proc.StandardOutput.ReadToEnd();
+                    var stderr = proc.StandardError.ReadToEnd();
+
+                    // LogInfo("Wait for process to exit...");
+                    proc.WaitForExit();
+                    // proc.ExitCode, stdout, stderr
+
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error($"Execute failed [{ex.Message}]");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Something external was dropped onto the control. We only care about a few.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void Selector_DroppedTarget(object? sender, Ephemera.IconicSelector.DroppedTargetEventArgs e)
+        {
+            _logger.Info($"Dropped item -> [{e.NewItem}]");
+        }
+        
+
+
+
 
         /// <summary>
         /// Handle window messages.
