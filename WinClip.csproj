@@ -24,6 +24,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <Compile Remove="lib\**" />
+      <EmbeddedResource Remove="lib\**" />
+      <None Remove="lib\**" />
+    </ItemGroup>
+
+    <ItemGroup>
       <Content Include="canard.ico" />
     </ItemGroup>
 
