@@ -191,7 +191,7 @@ namespace WinClip
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public RtfTextClip(IDataObject data)
+        public RtfTextClip(IDataObject data, ImageFit fit)
         {
             var sdata = data.GetData(TYPE_NAME);
             Content = (string)sdata!;
