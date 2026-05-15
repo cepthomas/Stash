@@ -17,7 +17,7 @@ using W32 = Ephemera.Win32.Internals;
 using WM = Ephemera.Win32.WindowManagement;
 
 
-// TODOC - Frequently throws System.ExecutionEngineException. Previously indicated
+// TODO! - Frequently throws System.ExecutionEngineException. Previously indicated
 // an unspecified fatal error in the runtime. MS says: The runtime no longer raises
 // this exception so this type is obsolete.
 // Other gleanings:
@@ -189,7 +189,7 @@ namespace WinClip
                 case "Add Folder":
                     CommonOpenFileDialog dialog = new()
                     {
-                        InitialDirectory = @"%APPDATA%\Microsoft\Windows\Start Menu\Programs", // TODOC from where?
+                        InitialDirectory = @"%APPDATA%\Microsoft\Windows\Start Menu\Programs", // TODO! from where?
                         IsFolderPicker = e.ClickedItem!.Text == "Add Folder"
                     };
                     if (dialog.ShowDialog() == CommonFileDialogResult.Ok)

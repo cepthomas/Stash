@@ -7,8 +7,29 @@
         <member name="T:Ephemera.IconicSelector.SelectorStyle">
             <summary>Supported styles.</summary>
         </member>
+        <member name="F:Ephemera.IconicSelector.SelectorStyle.Icon">
+            <summary>Icon of ImageSize Bitmap above, text block below</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.SelectorStyle.Tile">
+            <summary>Icon of ImageSize Bitmap left, text block right</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.SelectorStyle.Image">
+            <summary>Verbatim</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.SelectorStyle.Fit">
+            <summary>Fill with Bitmap</summary>
+        </member>
         <member name="T:Ephemera.IconicSelector.MouseFunction">
-            <summary></summary>
+            <summary>What the left mouse button does.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.MouseFunction.SingleSelect">
+            <summary>One only selected.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.MouseFunction.MultiSelect">
+            <summary>One or more selected.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.MouseFunction.Click">
+            <summary>Standard single click.</summary>
         </member>
         <member name="T:Ephemera.IconicSelector.SelectionEventArgs">
             <summary>User selection(s) have changed.</summary>
@@ -18,9 +39,28 @@
         </member>
         <member name="T:Ephemera.IconicSelector.DroppedTargetEventArgs">
             <summary>User drag-dropped something from elsewhere.</summary>
+            <remarks>Default constructor.</remarks>
+        </member>
+        <member name="M:Ephemera.IconicSelector.DroppedTargetEventArgs.#ctor(Ephemera.IconicSelector.Item)">
+            <summary>User drag-dropped something from elsewhere.</summary>
+            <remarks>Default constructor.</remarks>
         </member>
         <member name="P:Ephemera.IconicSelector.DroppedTargetEventArgs.NewItem">
             <summary>The new item</summary>
+        </member>
+        <member name="T:Ephemera.IconicSelector.TraceEventArgs">
+            <summary>User drag-dropped something from elsewhere.</summary>
+            <remarks>Default constructor.</remarks>
+        </member>
+        <member name="M:Ephemera.IconicSelector.TraceEventArgs.#ctor">
+            <summary>User drag-dropped something from elsewhere.</summary>
+            <remarks>Default constructor.</remarks>
+        </member>
+        <member name="P:Ephemera.IconicSelector.TraceEventArgs.Line">
+            <summary>Log line.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.TraceEventArgs.State">
+            <summary>Stuff moving too fast for Line.</summary>
         </member>
         <member name="T:Ephemera.IconicSelector.Item">
             <summary></summary>
@@ -29,10 +69,10 @@
             <summary>Displayed text</summary>
         </member>
         <member name="P:Ephemera.IconicSelector.Item.Bitmap">
-            <summary>Associated image or null if not available</summary>
+            <summary>Associated image.</summary>
         </member>
         <member name="P:Ephemera.IconicSelector.Item.Value">
-            <summary>Meaningful for client use</summary>
+            <summary>Carries data maningful to client.</summary>
         </member>
         <member name="M:Ephemera.IconicSelector.Item.#ctor(System.String,System.Drawing.Bitmap,System.Object)">
             <summary>Normal constructor</summary>
@@ -55,19 +95,16 @@
         <member name="P:Ephemera.IconicSelector.ItemDisplay.Item">
             <summary>The owned item.</summary>
         </member>
-        <member name="P:Ephemera.IconicSelector.ItemDisplay.ImageLoc">
+        <member name="P:Ephemera.IconicSelector.ItemDisplay.ImageRect">
             <summary>Geometry.</summary>
         </member>
         <member name="P:Ephemera.IconicSelector.ItemDisplay.TextRect">
             <summary>Geometry.</summary>
         </member>
-        <member name="P:Ephemera.IconicSelector.ItemDisplay.TargetColor">
+        <member name="P:Ephemera.IconicSelector.ItemDisplay.IndicatorColor">
             <summary>Cosmetics.</summary>
         </member>
         <member name="F:Ephemera.IconicSelector.ItemDisplay.Selected">
-            <summary></summary>
-        </member>
-        <member name="F:Ephemera.IconicSelector.ItemDisplay.IsTarget">
             <summary></summary>
         </member>
         <member name="M:Ephemera.IconicSelector.ItemDisplay.#ctor(Ephemera.IconicSelector.Item)">
@@ -123,8 +160,11 @@
         <member name="P:Ephemera.IconicSelector.Selector.DrawFont">
             <summary>Cosmetics.</summary>
         </member>
-        <member name="P:Ephemera.IconicSelector.Selector.TargetColor">
+        <member name="P:Ephemera.IconicSelector.Selector.IndicatorColor">
             <summary>Cosmetics.</summary>
+        </member>
+        <member name="P:Ephemera.IconicSelector.Selector.DefaultImage">
+            <summary>If no valid image available.</summary>
         </member>
         <member name="P:Ephemera.IconicSelector.Selector.Pad">
             <summary>Visual space at edges.</summary>
@@ -150,6 +190,9 @@
         <member name="F:Ephemera.IconicSelector.Selector._itemdSize">
             <summary>ItemDisplay geometry.</summary>
         </member>
+        <member name="F:Ephemera.IconicSelector.Selector._insertIndex">
+            <summary>Where to move/insert item.</summary>
+        </member>
         <member name="E:Ephemera.IconicSelector.Selector.Selection">
             <summary></summary>
         </member>
@@ -166,7 +209,8 @@
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.Init(Ephemera.IconicSelector.SelectorStyle)">
             <summary>
-            Constructor.
+            Constructor. Determines geometry of display elements.
+            <param name="style">Our flavor.</param>
             </summary>
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.Dispose(System.Boolean)">
@@ -177,21 +221,21 @@
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.AddItem(System.String,System.Drawing.Bitmap,System.Object,System.Int32)">
             <summary>
-            Add a new item. If insertion mark is visible, insert there, otherwise append.
+            Add a new item.
             </summary>
             <param name="text">For display below/next to image</param>
             <param name="bmp">Bitmap</param>
             <param name="value">Meaningful for client use</param>
-            <param name="index">Where to insert. -1 is append</param>
+            <param name="index">Where to insert, -1 is append</param>
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.RemoveItem(System.Int32)">
             <summary>
-            
+            Item management.
             </summary>
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.RemoveSelectedItems">
             <summary>
-            
+            Item management.
             </summary>
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.GetItems">
@@ -235,31 +279,25 @@
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragOver(System.Object,System.Windows.Forms.DragEventArgs)">
             <summary>
-            Moves the insertion mark as the item is dragged.
+            Moves the insertion indicator as the item is dragged.
             </summary>
             <param name="sender"></param>
             <param name="e"></param>
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragLeave(System.Object,System.EventArgs)">
             <summary>
-            Removes the insertion mark when the mouse leaves the control.
+            Removes the insertion indicator when the mouse leaves the control.
             </summary>
             <param name="sender"></param>
             <param name="e"></param>d
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.Itemd_DragDrop(System.Object,System.Windows.Forms.DragEventArgs)">
             <summary>
-            Moves the item to the location of the insertion mark.
+            Moves the source item to the insertion indicator.
             Handles drag sources of internal items and external files.
             </summary>
             <param name="sender"></param>
             <param name="e"></param>
-        </member>
-        <member name="M:Ephemera.IconicSelector.Selector.SetTarget(System.Int32)">
-            <summary>
-            Set the target property for specific item. Clears all others.
-            </summary>
-            <param name="index">If -1 clear all</param>
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.GetItemd(System.Object)">
             <summary>
@@ -272,7 +310,7 @@
         </member>
         <member name="M:Ephemera.IconicSelector.Selector.GetItemIndex(System.Object)">
             <summary>
-            Get the index in the collection
+            Get the index in the collection.
             </summary>
             <param name="item">ItemDisplay to test</param>
             <returns>Index or -1 if invalid</returns>
@@ -285,6 +323,21 @@
             </summary>
             <param name="itemd"></param>
             <exception cref="T:System.ArgumentNullException"></exception>
+        </member>
+        <member name="T:Ephemera.IconicSelector.ImageStuff.ImageFit">
+            <summary>Image fitting to ImageSize.</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.ImageStuff.ImageFit.None">
+            <summary>Client is in charge of images</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.ImageStuff.ImageFit.FitHeight">
+            <summary>Rendered image height from client, width scaled</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.ImageStuff.ImageFit.FitWidth">
+            <summary>Rendered image width from client, height scaled</summary>
+        </member>
+        <member name="F:Ephemera.IconicSelector.ImageStuff.ImageFit.Fill">
+            <summary>Use all available space</summary>
         </member>
     </members>
 </doc>
