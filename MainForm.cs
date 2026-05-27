@@ -1,15 +1,17 @@
 using System;
-using System.ComponentModel;
+using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices;
-using System.Threading;
-using System.Windows.Forms;
+using System.Drawing;
+using System.ComponentModel;
 using System.Text;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using System.Reflection;
+using System.Threading;
+using Microsoft.WindowsAPICodePack.Shell;
+using Microsoft.WindowsAPICodePack.Dialogs;
 using Ephemera.NBagOfTricks;
 using Ephemera.NBagOfUis;
 using Ephemera.IconicSelector;
@@ -46,8 +48,14 @@ namespace WinClip
         /// <summary>App logger.</summary>
         readonly Logger _logger = LogManager.CreateLogger("APP");
 
-        /// <summary>All clips in the collection.</summary>
-        readonly List<ClipDisplay> _clips = new();
+        /// <summary>The settings.</summary>
+        readonly UserSettings _settings;
+
+        ///// <summary>Save what happens.</summary>
+        //readonly List<string> _log = [];
+
+        // /// <summary>All clips in the collection.</summary>
+        // readonly List<ClipDisplay> _clips = new();
 
         /// <summary>Where to paste.</summary>
         IntPtr _pasteWin = IntPtr.Zero;
@@ -55,11 +63,11 @@ namespace WinClip
         /// <summary>Handle to the window event hook.</summary>
         readonly IntPtr _winEventHook = IntPtr.Zero;
 
-        /// <summary>Manage resources.</summary>
-        bool _disposed;
+        ///// <summary>Manage resources.</summary>
+        //bool _disposed;
 
         /// <summary>Dev.</summary>
-        Dev _dev = new();
+        Dev _dev = new(); // TODO1
 
         #region Workarounds 
         // win11 bug
@@ -74,49 +82,63 @@ namespace WinClip
         /// <summary>
         /// Constructor.
         /// </summary>
-        public MainForm()
+        /// <param name="args"></param>
+        public MainForm(string[] args)
         {
-            components = new Container();
             InitializeComponent();
-
-            ///// Load settings and init logging.
-            string appDir = MiscUtils.GetAppDataDir("WinClip", "Ephemera");
-            UserSettings.Settings = (UserSettings)SettingsCore.Load(appDir, typeof(UserSettings));
-            string logFileName = Path.Combine(appDir, "log.txt");
-            LogManager.LogMessage += LogManager_LogMessage;
-            LogManager.Run(logFileName, 100000);
-            UpdateFromSettings();
 
             Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
 
-            ///// Main form init.
-            Location = UserSettings.Settings.FormGeometry.Location;
-            ClientSize = new(UserSettings.Settings.ClipSize.Width + 30, UserSettings.Settings.FormGeometry.Size.Height);
-            WindowState = FormWindowState.Normal;
-            //ShowInTaskbar = false;
-            //Visible = false; // doesn't work
+            // Load settings first before initializing.
+            string appDir = MiscUtils.GetAppDataDir("WinClip", "Ephemera");
+            _settings = (UserSettings)SettingsCore.Load(appDir, typeof(UserSettings));
 
-            // Init selector properties.
-            selector.ImageSize = _settings.ImageSize;
-            selector.TargetColor = _settings.MarkerColor;
-            selector.DrawFont = _settings.TileFont;
-            selector.LeftMouseClick = MouseFunction.Click;
-            selector.AllowExternalDrop = true;
-            // Build it.
-            selector.Init(_settings.Style);
+            ClipBase.ClipSize = _settings.ClipSize;
+            ClipBase.ShortTextLen = _settings.ShortTextLen;
+
+            // Init logging.
+            string logFileName = Path.Combine(appDir, "log.txt");
+            LogManager.MinLevelFile = _settings.FileLogLevel;
+            LogManager.MinLevelNotif = _settings.NotifLogLevel;
+            LogManager.LogMessage += (object? sender, LogMessageEventArgs e) => { Tell(e.Message); };
+            LogManager.Run(logFileName, 50000);
+
+            Text = $"WinClip {MiscUtils.GetVersionString()}";
+
+            // Init selector configuration.
+            var config = new Config()
+            {
+                AllowExternalSource = false,
+                IndicatorColor = _settings.MarkerColor,
+                Spacing = 10,
+                Pad = 8,
+                Mode = OpMode.Click,
+                Style = SelectorStyle.Icon,
+                NumColumns = 1,
+                ImageSize = _settings.ClipSize,
+            };
+            selector.Init(config);
 
             // Hook selector events.
-            selector.Selection += Selector_Selection;
-            selector.DroppedTarget += Selector_DroppedTarget;
+            selector.Click += Selector_Click;
 
-            // Selector menu.
+            // Selector menu. TODO1 need a way to delete clip - probably should be in sel lib
             selector.ContextMenuStrip = new();
-            selector.ContextMenuStrip.Items.Add("Add File");
-            selector.ContextMenuStrip.Items.Add("Add Folder");
-            selector.ContextMenuStrip.Items.Add("Paste");
             selector.ContextMenuStrip.Items.Add("Remove");
             selector.ContextMenuStrip.ItemClicked += Menu_ItemClicked;
 
+            // Init the data. TODO1 persisted?
+            //_settings.Targets.ForEach(item => selector.AddResourceItem(item));
+
+            // Size and location. TODO1 probably user option? always/popup/?
+
+            FormBorderStyle = FormBorderStyle.SizableToolWindow;// FixedToolWindow;
+            StartPosition = FormStartPosition.Manual;
+            Size = new(selector.GetTotalArea().Width + SystemInformation.VerticalScrollBarWidth, 600);
+            WindowState = FormWindowState.Normal;
+            //WindowState = FormWindowState.Minimized;
+            var pos = Cursor.Position;
+            Location = new Point(200, 200);
 
             ///// System hooks.
             // Listen for window changes.
@@ -129,51 +151,6 @@ namespace WinClip
         }
 
         /// <summary>
-        /// Clean up on shutdown.
-        /// </summary>
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            LogManager.Stop();
-
-            // Save user settings.
-            UserSettings.Settings.FormGeometry = new()
-            {
-                X = Location.X,
-                Y = Location.Y,
-                Width = Width,
-                Height = Height
-            };
-
-            UserSettings.Settings.Save();
-
-            base.OnFormClosing(e);
-        }
-
-        /// <summary>
-        /// Boilerplate.
-        /// </summary>
-        protected override void Dispose(bool disposing)
-        {
-            if (_disposed) return;
-
-            if (disposing)
-            {
-                selector?.Dispose();
-                components.Dispose();
-            }
-
-            // Release unmanaged resources, set large fields to null.
-            RemoveClipboardFormatListener(Handle);
-            UnhookWinEvent(_winEventHook);
-
-            _disposed = true;
-
-            base.Dispose(disposing);
-        }
-        #endregion
-
-        #region Selector /////////////////////////// selector //////////////////////
-        /// <summary>
         /// User wants to do something.
         /// </summary>
         /// <param name="sender"></param>
@@ -181,126 +158,153 @@ namespace WinClip
         void Menu_ItemClicked(object? sender, ToolStripItemClickedEventArgs e)
         {
             selector.ContextMenuStrip!.Close();
-            //int index = selector.SelectedIndexes.Count > 0 ? selector.SelectedIndexes[0] : -1;
 
             switch (e.ClickedItem!.Text)
             {
-                case "Add File":
-                case "Add Folder":
-                    CommonOpenFileDialog dialog = new()
-                    {
-                        InitialDirectory = @"%APPDATA%\Microsoft\Windows\Start Menu\Programs", // TODO1 from where?
-                        IsFolderPicker = e.ClickedItem!.Text == "Add Folder"
-                    };
-                    if (dialog.ShowDialog() == CommonFileDialogResult.Ok)
-                    {
-                        AddTarget(dialog.FileName);
-                    }
-                    break;
-
-                case "Paste":
-                    AddTarget(Clipboard.GetText());
-                    break;
-
-                case "Remove":
-                    selector.RemoveSelectedItems();
+                case "Remove": // TODO1 ??
+                    //var sels = selector.GetSelectedItems();
+                    //sels.ForEach(sel => selector.RemoveItem(sel));
                     break;
             }
         }
 
-
-
         /// <summary>
-        /// Something external was dropped onto the control. We only care about a few.
+        /// Clean up on shutdown.
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void Selector_DroppedTarget(object? sender, Ephemera.IconicSelector.DroppedTargetEventArgs e)
+        protected override void OnFormClosing(FormClosingEventArgs e)
         {
-            _logger.Info($"Dropped item -> [{e.NewItem}]");
-        }
+            LogManager.Stop();
 
-
-
-        /// <summary>
-        /// Add an item.
-        /// </summary>
-        /// <param name="target"></param>
-        void AddTarget(Target target)
-        {
-            string text = "???";
-            string targetname = target.Name;
-            string targetnamelc = targetname.ToLower();
-            string fulltargetname = "";
-            Bitmap image = _defaultImage;
-            if (fulltargetname != "")
+            // Save user settings.
+            _settings.FormGeometry = new()
             {
-                selector.AddItem(text, image, fulltargetname);
-            }
+                X = Location.X,
+                Y = Location.Y,
+                Width = Width,
+                Height = Height
+            };
+
+            _settings.Save();
+
+            base.OnFormClosing(e);
         }
 
         /// <summary>
-        /// Add an item.
+        ///  Clean up any resources being used.
         /// </summary>
-        /// <param name="name"></param>
-        /// <param name="group"></param>
-        void AddTarget(string name, string group = "")
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
         {
-            AddTarget(new(){ Name = name, Group = group });
-        }
-
-        /// <summary>
-        /// User made a selection. Execute it.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void Selector_Selection(object? sender, Ephemera.IconicSelector.SelectionEventArgs e)
-        {
-            //_logger.Info($"Selection -> [{e.Entry.Text}] [{e.Entry.ImageName}] [{e.Entry.Tag}]");
-
-            foreach (var sel in e.SelectedItems)
+            if (disposing)
             {
-                ProcessStartInfo pinfo = new("cmd", ["/C", sel.Value.ToString()!])
-                {
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                };
-
-                try
-                {
-                    using Process proc = new() { StartInfo = pinfo };
-                    proc.Start();
-
-                    // TIL: To avoid deadlocks, always read the output stream first and then wait.
-                    var stdout = proc.StandardOutput.ReadToEnd();
-                    var stderr = proc.StandardError.ReadToEnd();
-
-                    // LogInfo("Wait for process to exit...");
-                    proc.WaitForExit();
-                    // proc.ExitCode, stdout, stderr
-
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error($"Execute failed [{ex.Message}]");
-                }
+                components?.Dispose();
+                selector?.Dispose();
             }
-        }
-
-        /// <summary>
-        /// Something external was dropped onto the control. We only care about a few.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void Selector_DroppedTarget(object? sender, Ephemera.IconicSelector.DroppedTargetEventArgs e)
-        {
-            _logger.Info($"Dropped item -> [{e.NewItem}]");
+            base.Dispose(disposing);
         }
         #endregion
 
+        #region Selector interaction
+        /// <summary>
+        /// A clip was clicked.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void Selector_Click(object? sender, ClickEventArgs e)
+        {
+            if (e.ClickedItem is not null)
+            {
+                // Item click.
+                //_logger.Info($"Selection -> [{e.ClickedItem.Caption}] [{e.ClickedItem.Value}]");
+
+                if (e.ClickedItem.DataType == ItemDataType.User)
+                {
+                    // Push into sys clipboard which will move it to the top.
+                    switch (e.ClickedItem.Value)
+                    {
+                        case PlainTextClip pcltxt:
+                            Clipboard.SetData(PlainTextClip.TYPE_NAME, pcltxt.Content);
+                            break;
+
+                        case RtfTextClip pclrtf:
+                            Clipboard.SetData(RtfTextClip.TYPE_NAME, pclrtf.Content);
+                            break;
+
+                        case ImageClip climg:
+                            Clipboard.SetData(ImageClip.TYPE_NAME, climg.Content);
+                            break;
+
+                        default:
+                            // Ignore the impossible.
+                            break;
+                    }
+
+                    // Send paste to the last window that was foreground, since WinClip is now fg.
+                    // Win11 does not allow direct setting of ForegroundWindow. This is now the way:
+                    // https://stackoverflow.com/questions/62966320/setforegroundwindow-not-setting-focus
+                    var fg = GetWindowInfo(_pasteWin);
+                    _logger.Debug($"Paste to win:{_pasteWin:X8} proc:{fg.ProcessId:X8}[{fg.ProcessName}]");
+                    Microsoft.VisualBasic.Interaction.AppActivate(fg.ProcessId);
+                    SendKeys.Send("^{V}");
+                }
+            }
+        }
+
+
+
+        // /// <summary>
+        // /// A clip was clicked.
+        // /// </summary>
+        // /// <param name="clipd">Sender</param>
+        // /// <param name="single">Single or double click</param>
+        // /// <param name="button">L or R button</param>
+        // void ClipClick(ClipDisplay? clipd, bool single, MouseButtons button)
+        // {
+        //     if (clipd is null)
+        //     {
+        //         return;
+        //     }
+
+        //     // Remove UI from list.
+        //     Controls.Remove(clipd);
+        //     _clips.Remove(clipd);
+
+        //     // Push into sys clipboard which will move it to the top.
+        //     switch (clipd.Clip)
+        //     {
+        //         case PlainTextClip pcltxt:
+        //             Clipboard.SetData(PlainTextClip.TYPE_NAME, pcltxt.Content);
+        //             break;
+
+        //         case RtfTextClip pclrtf:
+        //             Clipboard.SetData(RtfTextClip.TYPE_NAME, pclrtf.Content);
+        //             break;
+
+        //         case ImageClip climg:
+        //             Clipboard.SetData(ImageClip.TYPE_NAME, climg.Content);
+        //             break;
+
+        //         default:
+        //             // Ignore the impossible.
+        //             break;
+        //     }
+
+        //     // Send paste to the last window that was foreground, since WinClip is now fg.
+        //     // Win11 does not allow direct setting of ForegroundWindow. This is now the way:
+        //     // https://stackoverflow.com/questions/62966320/setforegroundwindow-not-setting-focus
+        //     var fg = GetWindowInfo(_pasteWin);
+        //     _logger.Debug($"Paste to win:{_pasteWin:X8} proc:{fg.ProcessId:X8}[{fg.ProcessName}]");
+        //     Microsoft.VisualBasic.Interaction.AppActivate(fg.ProcessId);
+        //     SendKeys.Send("^{V}");
+
+        //     Invalidate();
+        // }
+
+
+
+
+
+        #endregion
 
 
 
@@ -377,6 +381,42 @@ namespace WinClip
                             if (((DateTime.Now - _lastBmpTime).TotalMilliseconds > cutoff) || bmp.Size != _lastBmpSize)
                             {
                                 // Not the same so assume valid.
+
+                                //if(_fit) // TODO1 probably should be in sel or other lib
+                                //{
+                                //    float ratio = (float)_itemdSize.Height / bmp.Height;
+                                //    int tnWidth = (int)(bmp.Width * ratio);
+                                //    int tnHeight = (int)(bmp.Height * ratio);
+                                //    var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
+                                //    bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
+                                //}
+
+
+                // case SelectorStyle.FitHeight:
+                //     {
+                //         float ratio = (float)_itemdSize.Height / bmp.Height;
+                //         int tnWidth = (int)(bmp.Width * ratio);
+                //         int tnHeight = (int)(bmp.Height * ratio);
+                //         var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
+                //         bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
+                //     }
+                //     break;
+
+                // case SelectorStyle.FitWidth:
+                //     {
+                //         float ratio = (float)_itemdSize.Width / bmp.Width;
+                //         int tnHeight = (int)(bmp.Height * ratio);
+                //         int tnWidth = (int)(bmp.Width * ratio);
+                //         var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
+                //         bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
+                //     }
+                //     break;
+
+
+
+
+
+
                                 clip = new ImageClip(dobj);
                             }
                             //else a suspect, wait
@@ -414,7 +454,7 @@ namespace WinClip
                 }
                 catch (ExternalException ex)
                 {
-                    // _logger.Warn($"WM_DRAWCLIPBOARD ExternalException:{ex}");
+                    _logger.Warn($"WM_DRAWCLIPBOARD ExternalException:{ex}");
                     retries--;
                     Thread.Sleep(50);
                 }
@@ -445,80 +485,57 @@ namespace WinClip
         }
 
         /// <summary>
-        /// A clip was clicked.
-        /// </summary>
-        /// <param name="clipd">Sender</param>
-        /// <param name="single">Single or double click</param>
-        /// <param name="button">L or R button</param>
-        void ClipClick(ClipDisplay? clipd, bool single, MouseButtons button)
-        {
-            if (clipd is null)
-            {
-                return;
-            }
-
-            // Remove UI from list.
-            Controls.Remove(clipd);
-            _clips.Remove(clipd);
-
-            // Push into sys clipboard which will move it to the top.
-            switch (clipd.Clip)
-            {
-                case PlainTextClip pcltxt:
-                    Clipboard.SetData(PlainTextClip.TYPE_NAME, pcltxt.Content);
-                    break;
-
-                case RtfTextClip pclrtf:
-                    Clipboard.SetData(RtfTextClip.TYPE_NAME, pclrtf.Content);
-                    break;
-
-                case ImageClip climg:
-                    Clipboard.SetData(ImageClip.TYPE_NAME, climg.Content);
-                    break;
-
-                default:
-                    // Ignore the impossible.
-                    break;
-            }
-
-            // Send paste to the last window that was foreground, since WinClip is now fg.
-            // Win11 does not allow direct setting of ForegroundWindow. This is now the way:
-            // https://stackoverflow.com/questions/62966320/setforegroundwindow-not-setting-focus
-            var fg = GetWindowInfo(_pasteWin);
-            _logger.Debug($"Paste to win:{_pasteWin:X8} proc:{fg.ProcessId:X8}[{fg.ProcessName}]");
-            Microsoft.VisualBasic.Interaction.AppActivate(fg.ProcessId);
-            SendKeys.Send("^{V}");
-
-            Invalidate();
-        }
-
-        /// <summary>
         /// Add a new clip for viewing.
         /// </summary>
         /// <param name="clip"></param>
         void AddClip(ClipBase clip)
         {
-            ClipDisplay clipd = new(clip)
-            {
-                Width = UserSettings.Settings.ClipSize.Width,
-                Height = UserSettings.Settings.ClipSize.Height,
-            };
 
-            clipd.MouseClick += (sender, e) => { ClipClick(sender as ClipDisplay, true, e.Button); };
-            clipd.MouseDoubleClick += (sender, e) => { ClipClick(sender as ClipDisplay, false, e.Button); };
-            
-            _clips.Add(clipd);
-            
-            Controls.Add(clipd);
+            selector.AddUserItem("", clip.Thumbnail, clip, 0); //TODO1 tooltip text?
 
-            // Limit - remove tail(s).
-            while (_clips.Count > UserSettings.Settings.MaxClips)
-            {
-                var clipx = _clips.Last();
-                Controls.Remove(clipx);
-                _clips.Remove(clipx);
-            }
+
+            // ClipDisplay clipd = new(clip)
+            // {
+            //     Width = UserSettings.Settings.ClipSize.Width,
+            //     Height = UserSettings.Settings.ClipSize.Height,
+            // };
+
+            // clipd.MouseClick += (sender, e) => { ClipClick(sender as ClipDisplay, true, e.Button); };
+            // clipd.MouseDoubleClick += (sender, e) => { ClipClick(sender as ClipDisplay, false, e.Button); };
+            
+            // _clips.Add(clipd);
+            
+            // Controls.Add(clipd);
         }
+
+
+
+
+
+        #region Privates
+        /// <summary>
+        /// Just for debugging.
+        /// </summary>
+        /// <param name="s"></param>
+        void Tell(string s)
+        {
+            // TODO1 ?? this.InvokeIfRequired(_ => { _log.Add(s + Environment.NewLine); });
+        }
+
+        /// <summary>
+        /// Edit the options in a property grid.
+        /// </summary>
+        void Settings_Click(object? sender, EventArgs e)
+        {
+            var changes = SettingsEditor.Edit(_settings, "User Settings", 450);
+            MessageBox.Show("Restart required for changes to take effect");
+            _settings.Save();
+        }
+        #endregion
+
+
+
+
 
         /// <summary>
         /// Keeps track of foreground window for paste ops.
@@ -534,105 +551,8 @@ namespace WinClip
             }
         }
 
-        #region Drawing
-        /// <summary>
-        /// Draw the UI.
-        /// </summary>
-        /// <param name="e">The particular PaintEventArgs.</param>
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            int numGridColumns = 4;
-            int pad = 5;
 
-            // Assign ordered locations.
-            int xinc = UserSettings.Settings.ClipSize.Width + pad;
-            int yinc = UserSettings.Settings.ClipSize.Height + pad;
 
-            for (int i = 0; i < _clips.Count; i++)
-            {
-                int row = i / numGridColumns;
-                int col = i % numGridColumns;
-
-                int xloc = xinc * col + pad;
-                int yloc = yinc * row + pad;
-
-                _clips[i].Location = new Point(xloc, yloc);
-                yloc += yinc;
-            }
-
-            base.OnPaint(e);
-        }
-        #endregion
-
-        #region Settings
-        /// <summary>
-        /// Edit the options in a property grid.
-        /// </summary>
-        void Settings_Click(object? sender, EventArgs e)
-        {
-            var changes = SettingsEditor.Edit(UserSettings.Settings, "User Settings", 450);
-
-            // Detect changes of interest.
-            if (changes.Any(ch => ch.name == "ClipSize" || ch.name == "DisplayFont"))
-            {
-                MessageBox.Show("Restart required for device changes to take effect");
-            }
-
-            UpdateFromSettings();
-
-            UserSettings.Settings.Save();
-        }
-
-        /// <summary>
-        /// 
-        /// </summary>
-        void UpdateFromSettings()
-        {
-            LogManager.MinLevelFile = UserSettings.Settings.FileLogLevel;
-            LogManager.MinLevelNotif = UserSettings.Settings.NotifLogLevel;
-        }
-        #endregion
-
-        #region Misc
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void LogManager_LogMessage(object? sender, LogMessageEventArgs e)
-        {
-            this.InvokeIfRequired(_ => _dev.Tell(e.Message));
-        }
-
-        /// <summary>Do debug stuff.</summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void Debug_Click(object sender, EventArgs e)
-        {
-            _dev.Show();
-            for (int i = 0; i < 20; i++)
-            {
-                var sdir = MiscUtils.GetSourcePath();
-                var fn = Path.Combine(sdir, "Test", "ross.txt");
-                AddClip(new PlainTextClip(new DataObject(File.ReadAllText(fn))));
-                fn = Path.Combine(sdir, "Test", "ex.rtf");
-                AddClip(new RtfTextClip(new DataObject(RtfTextClip.TYPE_NAME, (File.ReadAllText(fn)))));
-                fn = Path.Combine(sdir, "Test", "ex.png");
-                AddClip(new ImageClip(new DataObject(Bitmap.FromFile(fn))));
-            }
-
-            // foreach (var clipd in _clips)
-            // {
-            //     _dev.Tell(clipd.Clip.Format());
-            // }
-
-            //List<IntPtr> appwins = WM.GetTopWindows(false);
-            //foreach (IntPtr appwin in appwins)
-            //{
-            //    var winfo = GetWindowInfo(appwin);
-            //    tvInfo.Append(winfo.ToString());
-            //}
-        }
 
         /// <summary>
         /// Get pertinent bits of info for a window.
@@ -647,7 +567,40 @@ namespace WinClip
             WindowInfo winfo = new(hwnd, appInfo.Pid, procName, title, appInfo.IsVisible);
             return winfo;
         }
-        #endregion
+
+
+
+
+        // /// <summary>Do debug stuff.</summary>
+        // /// <param name="sender"></param>
+        // /// <param name="e"></param>
+        // void Debug_Click(object sender, EventArgs e)
+        // {
+        //     _dev.Show();
+        //     for (int i = 0; i < 20; i++)
+        //     {
+        //         var sdir = MiscUtils.GetSourcePath();
+        //         var fn = Path.Combine(sdir, "Test", "ross.txt");
+        //         AddClip(new PlainTextClip(new DataObject(File.ReadAllText(fn))));
+        //         fn = Path.Combine(sdir, "Test", "ex.rtf");
+        //         AddClip(new RtfTextClip(new DataObject(RtfTextClip.TYPE_NAME, (File.ReadAllText(fn)))));
+        //         fn = Path.Combine(sdir, "Test", "ex.png");
+        //         AddClip(new ImageClip(new DataObject(Bitmap.FromFile(fn))));
+        //     }
+
+        //     // foreach (var clipd in _clips)
+        //     // {
+        //     //     _dev.Tell(clipd.Clip.Format());
+        //     // }
+
+        //     //List<IntPtr> appwins = WM.GetTopWindows(false);
+        //     //foreach (IntPtr appwin in appwins)
+        //     //{
+        //     //    var winfo = GetWindowInfo(appwin);
+        //     //    tvInfo.Append(winfo.ToString());
+        //     //}
+        // }
+
 
         #region Native
         private const int WINEVENT_INCONTEXT = 4;

@@ -12,9 +12,13 @@ using Ephemera.NBagOfTricks;
 using Ephemera.NBagOfUis;
 
 
+// UserSettings.Settings.ClipSize,
+// UserSettings.Settings.DisplayFont,
+// UserSettings.Settings.ShortTextLen);
+
 namespace WinClip
 {
-    /// <summary>Abstract base class for all clips.</summary>
+    /// <summary>Abstract base class for all clip types.</summary>
     [Serializable]
     public abstract class ClipBase
     {
@@ -34,13 +38,22 @@ namespace WinClip
         protected List<string> _formats = [];
         #endregion
 
+
+        public static Size ClipSize = new();
+
+        public static int ShortTextLen = 50;
+        // Font DisplayFont
+
+
+
+
         /// <summary>Constructor</summary>
         protected ClipBase()
         {
             Id = _nextId++;
 
             // Default.
-            Thumbnail = new(UserSettings.Settings.ClipSize.Width, UserSettings.Settings.ClipSize.Height);
+            Thumbnail = new(ClipSize.Width, ClipSize.Height);
             using Graphics gr = Graphics.FromImage(Thumbnail);
             gr.Clear(Color.LightYellow);
         }
@@ -59,56 +72,56 @@ namespace WinClip
         public abstract IDataObject? ToData();
         #endregion
 
-        #region Conversion utilities
-        /// <summary>
-        /// Make a bitmap from text.
-        /// </summary>
-        /// <param name="rtf"></param>
-        protected void RenderRtf(string rtf)
-        {
-            using RichTextBox rtb = new()
-            {
-                BorderStyle = BorderStyle.None,
-                Rtf = rtf,
-                Size = UserSettings.Settings.ClipSize,
-                ScrollBars = RichTextBoxScrollBars.None
-            };
-            Thumbnail = new Bitmap(rtb.Width, rtb.Height);
-            rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
-        }
+        //#region Conversion utilities
+        ///// <summary>
+        ///// Make a bitmap from text.
+        ///// </summary>
+        ///// <param name="rtf"></param>
+        //protected void RenderRtf(string rtf)
+        //{
+        //    using RichTextBox rtb = new()
+        //    {
+        //        BorderStyle = BorderStyle.None,
+        //        Rtf = rtf,
+        //        Size = UserSettings.Settings.ClipSize,
+        //        ScrollBars = RichTextBoxScrollBars.None
+        //    };
+        //    Thumbnail = new Bitmap(rtb.Width, rtb.Height);
+        //    rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
+        //}
 
-        /// <summary>
-        /// Make a bitmap from text.
-        /// </summary>
-        /// <param name="text"></param>
-        protected void RenderText(string text)
-        {
-            using RichTextBox rtb = new()
-            {
-                BorderStyle = BorderStyle.None,
-                Text = text,
-                Size = UserSettings.Settings.ClipSize,
-                Font = UserSettings.Settings.DisplayFont,
-                ScrollBars = RichTextBoxScrollBars.None
-            };
-            Thumbnail = new Bitmap(rtb.Width, rtb.Height);
-            rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
-        }
+        ///// <summary>
+        ///// Make a bitmap from text.
+        ///// </summary>
+        ///// <param name="text"></param>
+        //protected void RenderText(string text)
+        //{
+        //    using RichTextBox rtb = new()
+        //    {
+        //        BorderStyle = BorderStyle.None,
+        //        Text = text,
+        //        Size = UserSettings.Settings.ClipSize,
+        //        Font = UserSettings.Settings.DisplayFont,
+        //        ScrollBars = RichTextBoxScrollBars.None
+        //    };
+        //    Thumbnail = new Bitmap(rtb.Width, rtb.Height);
+        //    rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
+        //}
 
-        /// <summary>
-        /// Extract plain text from rtf.
-        /// </summary>
-        /// <param name="rtf"></param>
-        /// <returns></returns>
-        protected string RtfToText(string rtf)
-        {
-            using RichTextBox rtb = new()
-            {
-                Rtf = rtf
-            };
-            return rtb.Text;
-        }
-        #endregion
+        ///// <summary>
+        ///// Extract plain text from rtf.
+        ///// </summary>
+        ///// <param name="rtf"></param>
+        ///// <returns></returns>
+        //protected string RtfToText(string rtf)
+        //{
+        //    using RichTextBox rtb = new()
+        //    {
+        //        Rtf = rtf
+        //    };
+        //    return rtb.Text;
+        //}
+        //#endregion
     }
 
     /// <summary>Plain text.</summary>
@@ -135,10 +148,28 @@ namespace WinClip
             var sdata = data.GetData(TYPE_NAME);
             Content = (string)sdata!;
             _formats = [.. data.GetFormats()];
-            _shortText = Content.Left(UserSettings.Settings.ShortTextLen);
+            _shortText = Content.Left(ShortTextLen);
             RenderText(_shortText);
             
             Thumbnail.Save("pt.png");
+        }
+
+        /// <summary>
+        /// Make a bitmap from text.
+        /// </summary>
+        /// <param name="text"></param>
+        protected void RenderText(string text)
+        {
+            using RichTextBox rtb = new()
+            {
+                BorderStyle = BorderStyle.None,
+                Text = text,
+                Size = ClipSize,
+                //Font = DisplayFont,
+                ScrollBars = RichTextBoxScrollBars.None
+            };
+            Thumbnail = new Bitmap(rtb.Width, rtb.Height);
+            rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
         }
 
         /// <inheritdoc />
@@ -191,14 +222,45 @@ namespace WinClip
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public RtfTextClip(IDataObject data, ImageFit fit)
+        public RtfTextClip(IDataObject data)//, ImageFit fit)
         {
             var sdata = data.GetData(TYPE_NAME);
             Content = (string)sdata!;
-            _shortText = RtfToText(Content).Left(UserSettings.Settings.ShortTextLen);
+            _shortText = RtfToText(Content).Left(ShortTextLen);
             _formats = [.. data.GetFormats()];
             RenderRtf(Content);
             Thumbnail.Save("rtf.png");
+        }
+
+        /// <summary>
+        /// Extract plain text from rtf.
+        /// </summary>
+        /// <param name="rtf"></param>
+        /// <returns></returns>
+        protected string RtfToText(string rtf)
+        {
+            using RichTextBox rtb = new()
+            {
+                Rtf = rtf
+            };
+            return rtb.Text;
+        }
+
+        /// <summary>
+        /// Make a bitmap from text.
+        /// </summary>
+        /// <param name="rtf"></param>
+        protected void RenderRtf(string rtf)
+        {
+            using RichTextBox rtb = new()
+            {
+                BorderStyle = BorderStyle.None,
+                Rtf = rtf,
+                Size = ClipSize,
+                ScrollBars = RichTextBoxScrollBars.None
+            };
+            Thumbnail = new Bitmap(rtb.Width, rtb.Height);
+            rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
         }
 
         /// <inheritdoc />
@@ -251,10 +313,10 @@ namespace WinClip
             var idata = data.GetData(TYPE_NAME);
             Content = (Bitmap)idata!;
             // Make a thumbnail scaled to available real estate.
-            float ratio = (float)UserSettings.Settings.ClipSize.Height / Content.Height;
+            float ratio = (float)ClipSize.Height / Content.Height;
             int tnWidth = (int)(Content.Width * ratio);
-            int tnHeight = UserSettings.Settings.ClipSize.Height;
-            Thumbnail = Content.Resize(tnWidth, tnHeight);
+            int tnHeight = ClipSize.Height;
+            Thumbnail = MiscUtils.ResizeBitmap(Content, tnWidth, tnHeight);
             _formats = [.. data.GetFormats()];
         }
 
@@ -302,13 +364,13 @@ namespace WinClip
                 _formats = [.. _data.GetFormats()];
             }
 
-            // Big X.
-            Thumbnail = new(UserSettings.Settings.ClipSize.Width, UserSettings.Settings.ClipSize.Height);
+            // Big X. TODO1 ??
+            Thumbnail = new(ClipSize.Width, ClipSize.Height);
             using Graphics gr = Graphics.FromImage(Thumbnail);
             Pen pen = new(Color.Purple, 4);
             int pad = 8;
-            gr.DrawLine(pen, pad, pad, UserSettings.Settings.ClipSize.Width - pad, UserSettings.Settings.ClipSize.Height - pad);
-            gr.DrawLine(pen, pad, UserSettings.Settings.ClipSize.Height - pad, UserSettings.Settings.ClipSize.Width - pad, pad);
+            gr.DrawLine(pen, pad, pad, ClipSize.Width - pad, ClipSize.Height - pad);
+            gr.DrawLine(pen, pad, ClipSize.Height - pad, ClipSize.Width - pad, pad);
         }
 
         /// <inheritdoc />
