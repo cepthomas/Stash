@@ -12,10 +12,6 @@ using Ephemera.NBagOfTricks;
 using Ephemera.NBagOfUis;
 
 
-// UserSettings.Settings.ClipSize,
-// UserSettings.Settings.DisplayFont,
-// UserSettings.Settings.ShortTextLen);
-
 namespace WinClip
 {
     /// <summary>Abstract base class for all clip types.</summary>
@@ -24,10 +20,16 @@ namespace WinClip
     {
         #region Properties
         /// <summary>Keep track of things.</summary>
-        public int Id { get;  } = -1;
+        public int Id { get; } = -1;
 
         /// <summary>For display.</summary>
         public Bitmap Thumbnail { get; protected set; }
+
+        /// <summary>Common.</summary>
+        public static Size ClipSize { get; set; } = new();
+
+        /// <summary>Common.</summary>
+        public static int ShortTextLen { get; set; } = 50;
         #endregion
 
         #region Fields
@@ -37,15 +39,6 @@ namespace WinClip
         /// <summary>Clipboard formats supported.</summary>
         protected List<string> _formats = [];
         #endregion
-
-
-        public static Size ClipSize = new();
-
-        public static int ShortTextLen = 50;
-        // Font DisplayFont
-
-
-
 
         /// <summary>Constructor</summary>
         protected ClipBase()
@@ -71,57 +64,6 @@ namespace WinClip
         /// <returns></returns>
         public abstract IDataObject? ToData();
         #endregion
-
-        //#region Conversion utilities
-        ///// <summary>
-        ///// Make a bitmap from text.
-        ///// </summary>
-        ///// <param name="rtf"></param>
-        //protected void RenderRtf(string rtf)
-        //{
-        //    using RichTextBox rtb = new()
-        //    {
-        //        BorderStyle = BorderStyle.None,
-        //        Rtf = rtf,
-        //        Size = UserSettings.Settings.ClipSize,
-        //        ScrollBars = RichTextBoxScrollBars.None
-        //    };
-        //    Thumbnail = new Bitmap(rtb.Width, rtb.Height);
-        //    rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
-        //}
-
-        ///// <summary>
-        ///// Make a bitmap from text.
-        ///// </summary>
-        ///// <param name="text"></param>
-        //protected void RenderText(string text)
-        //{
-        //    using RichTextBox rtb = new()
-        //    {
-        //        BorderStyle = BorderStyle.None,
-        //        Text = text,
-        //        Size = UserSettings.Settings.ClipSize,
-        //        Font = UserSettings.Settings.DisplayFont,
-        //        ScrollBars = RichTextBoxScrollBars.None
-        //    };
-        //    Thumbnail = new Bitmap(rtb.Width, rtb.Height);
-        //    rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
-        //}
-
-        ///// <summary>
-        ///// Extract plain text from rtf.
-        ///// </summary>
-        ///// <param name="rtf"></param>
-        ///// <returns></returns>
-        //protected string RtfToText(string rtf)
-        //{
-        //    using RichTextBox rtb = new()
-        //    {
-        //        Rtf = rtf
-        //    };
-        //    return rtb.Text;
-        //}
-        //#endregion
     }
 
     /// <summary>Plain text.</summary>
@@ -136,7 +78,7 @@ namespace WinClip
         #region Fields
         // Typical: System.String, UnicodeText, Text
         public const string TYPE_NAME = "System.String";
-        public string _shortText;
+        public string _shortText; // TODO1 does this make sense?
         #endregion
 
         /// <summary>
@@ -163,6 +105,7 @@ namespace WinClip
             using RichTextBox rtb = new()
             {
                 BorderStyle = BorderStyle.None,
+                WordWrap = false,
                 Text = text,
                 Size = ClipSize,
                 //Font = DisplayFont,
@@ -241,7 +184,8 @@ namespace WinClip
         {
             using RichTextBox rtb = new()
             {
-                Rtf = rtf
+                Rtf = rtf,
+                WordWrap = false,
             };
             return rtb.Text;
         }
@@ -255,6 +199,7 @@ namespace WinClip
             using RichTextBox rtb = new()
             {
                 BorderStyle = BorderStyle.None,
+                WordWrap = false,
                 Rtf = rtf,
                 Size = ClipSize,
                 ScrollBars = RichTextBoxScrollBars.None

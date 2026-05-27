@@ -51,23 +51,15 @@ namespace WinClip
         /// <summary>The settings.</summary>
         readonly UserSettings _settings;
 
-        ///// <summary>Save what happens.</summary>
-        //readonly List<string> _log = [];
-
-        // /// <summary>All clips in the collection.</summary>
-        // readonly List<ClipDisplay> _clips = new();
-
         /// <summary>Where to paste.</summary>
         IntPtr _pasteWin = IntPtr.Zero;
 
         /// <summary>Handle to the window event hook.</summary>
         readonly IntPtr _winEventHook = IntPtr.Zero;
 
-        ///// <summary>Manage resources.</summary>
-        //bool _disposed;
-
         /// <summary>Dev.</summary>
         Dev _dev = new(); // TODO1
+        #endregion
 
         #region Workarounds 
         // win11 bug
@@ -75,7 +67,6 @@ namespace WinClip
         DateTime _lastBmpTime = DateTime.Now;
         // multiple identical messages
         int _lastClipboardSeq = -1;
-        #endregion
         #endregion
 
         #region Lifecycle
@@ -92,9 +83,6 @@ namespace WinClip
             // Load settings first before initializing.
             string appDir = MiscUtils.GetAppDataDir("WinClip", "Ephemera");
             _settings = (UserSettings)SettingsCore.Load(appDir, typeof(UserSettings));
-
-            ClipBase.ClipSize = _settings.ClipSize;
-            ClipBase.ShortTextLen = _settings.ShortTextLen;
 
             // Init logging.
             string logFileName = Path.Combine(appDir, "log.txt");
@@ -113,11 +101,13 @@ namespace WinClip
                 Spacing = 10,
                 Pad = 8,
                 Mode = OpMode.Click,
-                Style = SelectorStyle.Icon,
+                Style = SelectorStyle.Clip,
                 NumColumns = 1,
                 ImageSize = _settings.ClipSize,
             };
             selector.Init(config);
+            ClipBase.ClipSize = _settings.ClipSize;
+            ClipBase.ShortTextLen = _settings.ShortTextLen;
 
             // Hook selector events.
             selector.Click += Selector_Click;
@@ -130,11 +120,12 @@ namespace WinClip
             // Init the data. TODO1 persisted?
             //_settings.Targets.ForEach(item => selector.AddResourceItem(item));
 
-            // Size and location. TODO1 probably user option? always/popup/?
-
-            FormBorderStyle = FormBorderStyle.SizableToolWindow;// FixedToolWindow;
+            // Size and location. TODO1 user option? always/popup/?
+            FormBorderStyle = FormBorderStyle.FixedToolWindow; // SizableToolWindow
             StartPosition = FormStartPosition.Manual;
-            Size = new(selector.GetTotalArea().Width + SystemInformation.VerticalScrollBarWidth, 600);
+            // Calc client area.
+            var area = selector.GetTotalArea();
+            Size = new(area.Width + SystemInformation.VerticalScrollBarWidth, 600);
             WindowState = FormWindowState.Normal;
             //WindowState = FormWindowState.Minimized;
             var pos = Cursor.Position;
@@ -215,8 +206,6 @@ namespace WinClip
             if (e.ClickedItem is not null)
             {
                 // Item click.
-                //_logger.Info($"Selection -> [{e.ClickedItem.Caption}] [{e.ClickedItem.Value}]");
-
                 if (e.ClickedItem.DataType == ItemDataType.User)
                 {
                     // Push into sys clipboard which will move it to the top.
@@ -249,64 +238,7 @@ namespace WinClip
                 }
             }
         }
-
-
-
-        // /// <summary>
-        // /// A clip was clicked.
-        // /// </summary>
-        // /// <param name="clipd">Sender</param>
-        // /// <param name="single">Single or double click</param>
-        // /// <param name="button">L or R button</param>
-        // void ClipClick(ClipDisplay? clipd, bool single, MouseButtons button)
-        // {
-        //     if (clipd is null)
-        //     {
-        //         return;
-        //     }
-
-        //     // Remove UI from list.
-        //     Controls.Remove(clipd);
-        //     _clips.Remove(clipd);
-
-        //     // Push into sys clipboard which will move it to the top.
-        //     switch (clipd.Clip)
-        //     {
-        //         case PlainTextClip pcltxt:
-        //             Clipboard.SetData(PlainTextClip.TYPE_NAME, pcltxt.Content);
-        //             break;
-
-        //         case RtfTextClip pclrtf:
-        //             Clipboard.SetData(RtfTextClip.TYPE_NAME, pclrtf.Content);
-        //             break;
-
-        //         case ImageClip climg:
-        //             Clipboard.SetData(ImageClip.TYPE_NAME, climg.Content);
-        //             break;
-
-        //         default:
-        //             // Ignore the impossible.
-        //             break;
-        //     }
-
-        //     // Send paste to the last window that was foreground, since WinClip is now fg.
-        //     // Win11 does not allow direct setting of ForegroundWindow. This is now the way:
-        //     // https://stackoverflow.com/questions/62966320/setforegroundwindow-not-setting-focus
-        //     var fg = GetWindowInfo(_pasteWin);
-        //     _logger.Debug($"Paste to win:{_pasteWin:X8} proc:{fg.ProcessId:X8}[{fg.ProcessName}]");
-        //     Microsoft.VisualBasic.Interaction.AppActivate(fg.ProcessId);
-        //     SendKeys.Send("^{V}");
-
-        //     Invalidate();
-        // }
-
-
-
-
-
         #endregion
-
-
 
 
         /// <summary>
@@ -318,7 +250,7 @@ namespace WinClip
             switch (msg.Msg)
             {
                 case W32.WM_CLIPBOARDUPDATE: // clipboard contents have changed
-                    //_logger.Debug($"WM_CLIPBOARDUPDATE suppress:{_suppressClipboardUpdate}");
+                    //_logger.Debug($"WM_CLIPBOARDUPDATE");
                     DoClipboardUpdate(msg);
                     msg.Result = -1; // means handled?
                     break;
@@ -382,7 +314,7 @@ namespace WinClip
                             {
                                 // Not the same so assume valid.
 
-                                //if(_fit) // TODO1 probably should be in sel or other lib
+                                //if(_fit) // FitHeight TODO1 probably should be in sel or other lib
                                 //{
                                 //    float ratio = (float)_itemdSize.Height / bmp.Height;
                                 //    int tnWidth = (int)(bmp.Width * ratio);
@@ -390,32 +322,6 @@ namespace WinClip
                                 //    var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
                                 //    bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
                                 //}
-
-
-                // case SelectorStyle.FitHeight:
-                //     {
-                //         float ratio = (float)_itemdSize.Height / bmp.Height;
-                //         int tnWidth = (int)(bmp.Width * ratio);
-                //         int tnHeight = (int)(bmp.Height * ratio);
-                //         var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
-                //         bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
-                //     }
-                //     break;
-
-                // case SelectorStyle.FitWidth:
-                //     {
-                //         float ratio = (float)_itemdSize.Width / bmp.Width;
-                //         int tnHeight = (int)(bmp.Height * ratio);
-                //         int tnWidth = (int)(bmp.Width * ratio);
-                //         var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
-                //         bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
-                //     }
-                //     break;
-
-
-
-
-
 
                                 clip = new ImageClip(dobj);
                             }
@@ -490,27 +396,8 @@ namespace WinClip
         /// <param name="clip"></param>
         void AddClip(ClipBase clip)
         {
-
             selector.AddUserItem("", clip.Thumbnail, clip, 0); //TODO1 tooltip text?
-
-
-            // ClipDisplay clipd = new(clip)
-            // {
-            //     Width = UserSettings.Settings.ClipSize.Width,
-            //     Height = UserSettings.Settings.ClipSize.Height,
-            // };
-
-            // clipd.MouseClick += (sender, e) => { ClipClick(sender as ClipDisplay, true, e.Button); };
-            // clipd.MouseDoubleClick += (sender, e) => { ClipClick(sender as ClipDisplay, false, e.Button); };
-            
-            // _clips.Add(clipd);
-            
-            // Controls.Add(clipd);
         }
-
-
-
-
 
         #region Privates
         /// <summary>
@@ -534,9 +421,6 @@ namespace WinClip
         #endregion
 
 
-
-
-
         /// <summary>
         /// Keeps track of foreground window for paste ops.
         /// </summary>
@@ -551,9 +435,6 @@ namespace WinClip
             }
         }
 
-
-
-
         /// <summary>
         /// Get pertinent bits of info for a window.
         /// </summary>
@@ -567,8 +448,6 @@ namespace WinClip
             WindowInfo winfo = new(hwnd, appInfo.Pid, procName, title, appInfo.IsVisible);
             return winfo;
         }
-
-
 
 
         // /// <summary>Do debug stuff.</summary>
