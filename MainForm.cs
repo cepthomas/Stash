@@ -107,7 +107,6 @@ namespace WinClip
             };
             selector.Init(config);
             ClipBase.ClipSize = _settings.ClipSize;
-            ClipBase.ShortTextLen = _settings.ShortTextLen;
 
             // Hook selector events.
             selector.Click += Selector_Click;
@@ -120,7 +119,7 @@ namespace WinClip
             // Init the data. TODO1 persisted?
             //_settings.Targets.ForEach(item => selector.AddResourceItem(item));
 
-            // Size and location. TODO1 user option? always/popup/?
+            // Size and location. TODO1 always/popup/? user option?
             FormBorderStyle = FormBorderStyle.FixedToolWindow; // SizableToolWindow
             StartPosition = FormStartPosition.Manual;
             // Calc client area.
@@ -212,15 +211,15 @@ namespace WinClip
                     switch (e.ClickedItem.Value)
                     {
                         case PlainTextClip pcltxt:
-                            Clipboard.SetData(PlainTextClip.TYPE_NAME, pcltxt.Content);
+                            Clipboard.SetData(PlainTextClip.TypeName, pcltxt.Content);
                             break;
 
                         case RtfTextClip pclrtf:
-                            Clipboard.SetData(RtfTextClip.TYPE_NAME, pclrtf.Content);
+                            Clipboard.SetData(RtfTextClip.TypeName, pclrtf.Content);
                             break;
 
                         case ImageClip climg:
-                            Clipboard.SetData(ImageClip.TYPE_NAME, climg.Content);
+                            Clipboard.SetData(ImageClip.TypeName, climg.Content);
                             break;
 
                         default:
@@ -298,7 +297,7 @@ namespace WinClip
 
                         var fmts = dobj.GetFormats();
                         _dev.Tell($"Copy op: {string.Join("|", fmts)}");
-                        if (fmts.Contains(ImageClip.TYPE_NAME))
+                        if (fmts.Contains(ImageClip.TypeName))
                         {
                             // Hacks to work around win11 bug in KB5079473 that causes system Print Screen to generate
                             // more than one message. This is a crude way to protect from that until MS fixes the issue.
@@ -308,7 +307,7 @@ namespace WinClip
                             // _logger.Debug($"ts:{ts}");
                             int cutoff = 250; // measured is max 60 msec
 
-                            var img = dobj.GetData(ImageClip.TYPE_NAME);
+                            var img = dobj.GetData(ImageClip.TypeName);
                             var bmp = img as Bitmap;
 
                             if (((DateTime.Now - _lastBmpTime).TotalMilliseconds > cutoff) || bmp.Size != _lastBmpSize)
@@ -322,11 +321,11 @@ namespace WinClip
                             _lastBmpTime = DateTime.Now;
                             _lastBmpSize = bmp.Size;
                         }
-                        else if (fmts.Contains(RtfTextClip.TYPE_NAME))
+                        else if (fmts.Contains(RtfTextClip.TypeName))
                         {
                             clip = new RtfTextClip(dobj);
                         }
-                        else if (fmts.Contains(PlainTextClip.TYPE_NAME))
+                        else if (fmts.Contains(PlainTextClip.TypeName))
                         {
                             clip = new PlainTextClip(dobj);
                         }
@@ -380,8 +379,6 @@ namespace WinClip
             m.Result = -1; // means handled?
         }
 
-
-
         #region Privates
         /// <summary>
         /// Just for debugging.
@@ -432,36 +429,41 @@ namespace WinClip
             return winfo;
         }
 
+        ///// <summary>Do debug stuff.</summary>
+        ///// <param name="sender"></param>
+        ///// <param name="e"></param>
+        //void Debug_Click(object sender, EventArgs e)
+        //{
+        //    _dev.Show();
+        //    for (int i = 0; i < 20; i++)
+        //    {
+        //        var sdir = MiscUtils.GetSourcePath();
+        //        var fn = Path.Combine(sdir, "Test", "ross.txt");
 
-        // /// <summary>Do debug stuff.</summary>
-        // /// <param name="sender"></param>
-        // /// <param name="e"></param>
-        // void Debug_Click(object sender, EventArgs e)
-        // {
-        //     _dev.Show();
-        //     for (int i = 0; i < 20; i++)
-        //     {
-        //         var sdir = MiscUtils.GetSourcePath();
-        //         var fn = Path.Combine(sdir, "Test", "ross.txt");
-        //         AddClip(new PlainTextClip(new DataObject(File.ReadAllText(fn))));
-        //         fn = Path.Combine(sdir, "Test", "ex.rtf");
-        //         AddClip(new RtfTextClip(new DataObject(RtfTextClip.TYPE_NAME, (File.ReadAllText(fn)))));
-        //         fn = Path.Combine(sdir, "Test", "ex.png");
-        //         AddClip(new ImageClip(new DataObject(Bitmap.FromFile(fn))));
-        //     }
+        //        var clip = new PlainTextClip(new DataObject(File.ReadAllText(fn)));
+        //        selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
 
-        //     // foreach (var clipd in _clips)
-        //     // {
-        //     //     _dev.Tell(clipd.Clip.Format());
-        //     // }
+        //        fn = Path.Combine(sdir, "Test", "ex.rtf");
+        //        clip = new RtfTextClip(new DataObject(RtfTextClip.TypeName, (File.ReadAllText(fn))));
+        //        selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
 
-        //     //List<IntPtr> appwins = WM.GetTopWindows(false);
-        //     //foreach (IntPtr appwin in appwins)
-        //     //{
-        //     //    var winfo = GetWindowInfo(appwin);
-        //     //    tvInfo.Append(winfo.ToString());
-        //     //}
-        // }
+        //        fn = Path.Combine(sdir, "Test", "ex.png");
+        //        clip = new ImageClip(new DataObject(Bitmap.FromFile(fn)));
+        //        selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
+        //    }
+
+        //    // foreach (var clipd in _clips)
+        //    // {
+        //    //     _dev.Tell(clipd.Clip.Format());
+        //    // }
+
+        //    //List<IntPtr> appwins = WM.GetTopWindows(false);
+        //    //foreach (IntPtr appwin in appwins)
+        //    //{
+        //    //    var winfo = GetWindowInfo(appwin);
+        //    //    tvInfo.Append(winfo.ToString());
+        //    //}
+        //}
 
 
         #region Native

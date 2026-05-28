@@ -52,10 +52,6 @@ namespace WinClip
         // [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         // [Browsable(false)]
         // public List<string> Targets { get; set; } = [];
-
-        // Make configurable or calculated?
-        [Browsable(false)]
-        public int ShortTextLen { get; set; } = 60;
         #endregion
     }
 }

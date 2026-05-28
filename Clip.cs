@@ -19,7 +19,6 @@ namespace WinClip
     public abstract class ClipBase
     {
         #region Properties
-
         /// <summary>For display.</summary>
         public Bitmap Thumbnail { get; protected set; }
 
@@ -32,9 +31,6 @@ namespace WinClip
         #endregion
 
         #region Fields
-        /// <summary>Windows data type.</summary>
-        protected string _typeName = "???";
-
         /// <summary>Backing field.</summary>
         static Size _clipSize = new();
 
@@ -49,7 +45,7 @@ namespace WinClip
             Thumbnail = new(ClipSize.Width, ClipSize.Height);
         }
 
-        #region Abstract functions
+        #region Abstract members
         /// <summary>
         /// Convert to clipboard format.
         /// </summary>
@@ -68,7 +64,8 @@ namespace WinClip
         #endregion
 
         #region Fields
-
+        /// <summary>Windows data type.</summary>
+        public static string TypeName = "System.String";
         #endregion
 
         /// <summary>
@@ -77,8 +74,7 @@ namespace WinClip
         /// <param name="data"></param>
         public PlainTextClip(IDataObject data)
         {
-            _typeName = "System.String";
-            var sdata = data.GetData(_typeName);
+            var sdata = data.GetData(TypeName);
             Content = (string)sdata!;
             var text = Content.Left(_shortTextLen);
 
@@ -120,6 +116,9 @@ namespace WinClip
         #endregion
 
         #region Fields
+        /// <summary>Windows data type.</summary>
+        public static string TypeName = "Rich Text Format";
+
         public string _shortText;
         #endregion
 
@@ -129,8 +128,7 @@ namespace WinClip
         /// <param name="data"></param>
         public RtfTextClip(IDataObject data)
         {
-            _typeName = "Rich Text Format";
-            var sdata = data.GetData(_typeName);
+            var sdata = data.GetData(TypeName);
             Content = (string)sdata!;
 
             using RichTextBox rtb = new()
@@ -145,41 +143,6 @@ namespace WinClip
             Thumbnail = new Bitmap(rtb.Width, rtb.Height);
             rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
         }
-
-
-
-        // /// <summary>
-        // /// Extract plain text from rtf.
-        // /// </summary>
-        // /// <param name="rtf"></param>
-        // /// <returns></returns>
-        // protected string RtfToText(string rtf)
-        // {
-        //     using RichTextBox rtb = new()
-        //     {
-        //         Rtf = rtf,
-        //         WordWrap = false,
-        //     };
-        //     return rtb.Text;
-        // }
-
-        // /// <summary>
-        // /// Make a bitmap from text.
-        // /// </summary>
-        // /// <param name="rtf"></param>
-        // protected void RenderRtf(string rtf)
-        // {
-        //     using RichTextBox rtb = new()
-        //     {
-        //         BorderStyle = BorderStyle.None,
-        //         WordWrap = false,
-        //         Rtf = rtf,
-        //         Size = ClipSize,
-        //         ScrollBars = RichTextBoxScrollBars.None
-        //     };
-        //     Thumbnail = new Bitmap(rtb.Width, rtb.Height);
-        //     rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
-        // }
 
         /// <inheritdoc />
         public override IDataObject? ToData()
@@ -204,7 +167,8 @@ namespace WinClip
         #endregion
 
         #region Fields
-
+        /// <summary>Windows data type.</summary>
+        public static string TypeName = "System.Drawing.Bitmap";
         #endregion
 
         /// <summary>
@@ -213,8 +177,7 @@ namespace WinClip
         /// <param name="data"></param>
         public ImageClip(IDataObject data)
         {
-            _typeName = "System.Drawing.Bitmap";
-            var idata = data.GetData(_typeName);
+            var idata = data.GetData(TypeName);
             Content = (Bitmap)idata!;
             // Make a thumbnail scaled to available real estate.
             float ratio = (float)ClipSize.Height / Content.Height;
@@ -240,6 +203,11 @@ namespace WinClip
     [Serializable]
     public class DefaultClip : ClipBase
     {
+        #region Properties
+        /// <summary>Actual content.</summary>
+        public Bitmap Content { get; private set; }
+        #endregion
+
         #region Fields
         readonly IDataObject? _data = null;
         #endregion
@@ -257,7 +225,7 @@ namespace WinClip
             Thumbnail = new(ClipSize.Width, ClipSize.Height);
             using Graphics gr = Graphics.FromImage(Thumbnail);
             gr.Clear(Color.LightSalmon);
-            gr.DrawString($"????", Font, Brushes.Black, 2, 2);
+            //gr.DrawString($"????", this.Font, Brushes.Black, 2, 2);
         }
 
         /// <inheritdoc />
