@@ -19,45 +19,37 @@ namespace WinClip
     public abstract class ClipBase
     {
         #region Properties
-        /// <summary>Keep track of things.</summary>
-        public int Id { get; } = -1;
 
         /// <summary>For display.</summary>
         public Bitmap Thumbnail { get; protected set; }
 
-        /// <summary>Common.</summary>
-        public static Size ClipSize { get; set; } = new();
-
-        /// <summary>Common.</summary>
-        public static int ShortTextLen { get; set; } = 50;
+        /// <summary>Common - set by client.</summary>
+        public static Size ClipSize
+        {
+            get { return _clipSize; }
+            set { _clipSize = value; _shortTextLen = _clipSize.Width * _clipSize.Height / 32; }
+        }
         #endregion
 
         #region Fields
-        /// <summary>Assign ids.</summary>
-        static int _nextId = 1;
+        /// <summary>Windows data type.</summary>
+        protected string _typeName = "???";
 
-        /// <summary>Clipboard formats supported.</summary>
-        protected List<string> _formats = [];
+        /// <summary>Backing field.</summary>
+        static Size _clipSize = new();
+
+        /// <summary>Truncated text to show.</summary>
+        protected static int _shortTextLen = 50;
         #endregion
 
         /// <summary>Constructor</summary>
         protected ClipBase()
         {
-            Id = _nextId++;
-
-            // Default.
+            // Default thumbnail.
             Thumbnail = new(ClipSize.Width, ClipSize.Height);
-            using Graphics gr = Graphics.FromImage(Thumbnail);
-            gr.Clear(Color.LightYellow);
         }
 
         #region Abstract functions
-        /// <summary>
-        /// Readable contents with detail.
-        /// </summary>
-        /// <returns></returns>
-        public abstract string Format();
-
         /// <summary>
         /// Convert to clipboard format.
         /// </summary>
@@ -76,9 +68,7 @@ namespace WinClip
         #endregion
 
         #region Fields
-        // Typical: System.String, UnicodeText, Text
-        public const string TYPE_NAME = "System.String";
-        public string _shortText; // TODO1 does this make sense?
+
         #endregion
 
         /// <summary>
@@ -87,21 +77,12 @@ namespace WinClip
         /// <param name="data"></param>
         public PlainTextClip(IDataObject data)
         {
-            var sdata = data.GetData(TYPE_NAME);
+            _typeName = "System.String";
+            var sdata = data.GetData(_typeName);
             Content = (string)sdata!;
-            _formats = [.. data.GetFormats()];
-            _shortText = Content.Left(ShortTextLen);
-            RenderText(_shortText);
-            
-            Thumbnail.Save("pt.png");
-        }
+            var text = Content.Left(_shortTextLen);
 
-        /// <summary>
-        /// Make a bitmap from text.
-        /// </summary>
-        /// <param name="text"></param>
-        protected void RenderText(string text)
-        {
+            // Make a bitmap from text.
             using RichTextBox rtb = new()
             {
                 BorderStyle = BorderStyle.None,
@@ -116,17 +97,6 @@ namespace WinClip
         }
 
         /// <inheritdoc />
-        public override string Format()
-        {
-            List<string> ls = [
-                $"PlainTextClip:[{Id}]",
-                $"Formats:[{string.Join("|", _formats)}]",
-                $"Text:[{_shortText}]",
-            ];
-            return string.Join(Environment.NewLine + "  ", ls);
-        }
-
-        /// <inheritdoc />
         public override IDataObject? ToData()
         {
             var dobj = new DataObject(Content);
@@ -136,7 +106,7 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"PlainTextClip:[{Id}] Text:[{_shortText}]";
+            return $"PlainTextClip:[{Content.Left(_shortTextLen)}]";
         }
     }
 
@@ -150,14 +120,6 @@ namespace WinClip
         #endregion
 
         #region Fields
-        // Typical: Rich Text Format, Rich Text Format Without Objects, RTF As Text, System.String,
-        //     UnicodeText, Text, RichEdit Binary, EnterpriseDataProtectionId
-        // Copy from word rtf: Object Descriptor, Rich Text Format, HTML Format, System.String, UnicodeText,
-        //     Text, EnhancedMetafile, MetaFilePict, Embed Source, Link Source, Link Source Descriptor,
-        //     ObjectLink, Hyperlink
-        // Copy from VS editor: Rich Text Format, VS Original Clipboard Text Format, System.String,
-        //     UnicodeText, Text
-        public const string TYPE_NAME = "Rich Text Format";
         public string _shortText;
         #endregion
 
@@ -165,59 +127,59 @@ namespace WinClip
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public RtfTextClip(IDataObject data)//, ImageFit fit)
+        public RtfTextClip(IDataObject data)
         {
-            var sdata = data.GetData(TYPE_NAME);
+            _typeName = "Rich Text Format";
+            var sdata = data.GetData(_typeName);
             Content = (string)sdata!;
-            _shortText = RtfToText(Content).Left(ShortTextLen);
-            _formats = [.. data.GetFormats()];
-            RenderRtf(Content);
-            Thumbnail.Save("rtf.png");
-        }
 
-        /// <summary>
-        /// Extract plain text from rtf.
-        /// </summary>
-        /// <param name="rtf"></param>
-        /// <returns></returns>
-        protected string RtfToText(string rtf)
-        {
             using RichTextBox rtb = new()
             {
-                Rtf = rtf,
+                Rtf = Content,
                 WordWrap = false,
-            };
-            return rtb.Text;
-        }
-
-        /// <summary>
-        /// Make a bitmap from text.
-        /// </summary>
-        /// <param name="rtf"></param>
-        protected void RenderRtf(string rtf)
-        {
-            using RichTextBox rtb = new()
-            {
                 BorderStyle = BorderStyle.None,
-                WordWrap = false,
-                Rtf = rtf,
                 Size = ClipSize,
                 ScrollBars = RichTextBoxScrollBars.None
             };
+            _shortText = rtb.Text.Left(_shortTextLen);
             Thumbnail = new Bitmap(rtb.Width, rtb.Height);
             rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
         }
 
-        /// <inheritdoc />
-        public override string Format()
-        {
-            List<string> ls = [
-                $"RtfTextClip:[{Id}]",
-                $"Formats:[{string.Join("|", _formats)}]",
-                $"Text:[{_shortText}]",
-            ];
-            return string.Join(Environment.NewLine + "  ", ls);
-        }
+
+
+        // /// <summary>
+        // /// Extract plain text from rtf.
+        // /// </summary>
+        // /// <param name="rtf"></param>
+        // /// <returns></returns>
+        // protected string RtfToText(string rtf)
+        // {
+        //     using RichTextBox rtb = new()
+        //     {
+        //         Rtf = rtf,
+        //         WordWrap = false,
+        //     };
+        //     return rtb.Text;
+        // }
+
+        // /// <summary>
+        // /// Make a bitmap from text.
+        // /// </summary>
+        // /// <param name="rtf"></param>
+        // protected void RenderRtf(string rtf)
+        // {
+        //     using RichTextBox rtb = new()
+        //     {
+        //         BorderStyle = BorderStyle.None,
+        //         WordWrap = false,
+        //         Rtf = rtf,
+        //         Size = ClipSize,
+        //         ScrollBars = RichTextBoxScrollBars.None
+        //     };
+        //     Thumbnail = new Bitmap(rtb.Width, rtb.Height);
+        //     rtb.DrawToBitmap(Thumbnail, new Rectangle(0, 0, rtb.Width, rtb.Height));
+        // }
 
         /// <inheritdoc />
         public override IDataObject? ToData()
@@ -228,7 +190,7 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"RtfTextClip:[{Id}] Text:[{_shortText}]";
+            return $"RtfTextClip:[{_shortText}]";
         }
     }
 
@@ -242,11 +204,7 @@ namespace WinClip
         #endregion
 
         #region Fields
-        // Typical: Preferred DropEffect, System.Drawing.Bitmap, Bitmap, PNG
-        // Copy from irfanview png/jpg: DeviceIndependentBitmap, System.Drawing.Bitmap, Bitmap, Format17
-        // Copy from word imageg: Art::GVML ClipFormat, System.Drawing.Bitmap, Bitmap, PNG, JFIF, GIF,
-        //    EnhancedMetafile, MetaFilePict, Object Descriptor
-        public const string TYPE_NAME = "System.Drawing.Bitmap";
+
         #endregion
 
         /// <summary>
@@ -255,25 +213,14 @@ namespace WinClip
         /// <param name="data"></param>
         public ImageClip(IDataObject data)
         {
-            var idata = data.GetData(TYPE_NAME);
+            _typeName = "System.Drawing.Bitmap";
+            var idata = data.GetData(_typeName);
             Content = (Bitmap)idata!;
             // Make a thumbnail scaled to available real estate.
             float ratio = (float)ClipSize.Height / Content.Height;
             int tnWidth = (int)(Content.Width * ratio);
             int tnHeight = ClipSize.Height;
             Thumbnail = MiscUtils.ResizeBitmap(Content, tnWidth, tnHeight);
-            _formats = [.. data.GetFormats()];
-        }
-
-        /// <inheritdoc />
-        public override string Format()
-        {
-            List<string> ls = [
-                $"ImageClip:[{Id}]",
-                $"Formats:[{string.Join("|", _formats)}]",
-                $"Bitmap W:{Content.Width} H:{Content.Height}",
-            ];
-            return string.Join(Environment.NewLine + "  ", ls);
         }
 
         /// <inheritdoc />
@@ -285,7 +232,7 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"ImageClip:[{Id}] W:{Content.Width} H:{Content.Height}";
+            return $"ImageClip:[{Content.Size}]";
         }
     }
 
@@ -304,27 +251,13 @@ namespace WinClip
         public DefaultClip(IDataObject? data)
         {
             _data = data;
-            if (_data is not null)
-            {
-                _formats = [.. _data.GetFormats()];
-            }
+            //var formats = data.GetFormats();
 
-            // Big X. TODO1 ??
+            // Default thumbnail.
             Thumbnail = new(ClipSize.Width, ClipSize.Height);
             using Graphics gr = Graphics.FromImage(Thumbnail);
-            Pen pen = new(Color.Purple, 4);
-            int pad = 8;
-            gr.DrawLine(pen, pad, pad, ClipSize.Width - pad, ClipSize.Height - pad);
-            gr.DrawLine(pen, pad, ClipSize.Height - pad, ClipSize.Width - pad, pad);
-        }
-
-        /// <inheritdoc />
-        public override string Format()
-        {
-            List<string> ls = [
-                $"DefaultClip {Id}",
-                $"Formats:[{string.Join("|", _formats)}]" ];
-            return string.Join(Environment.NewLine + "  ", ls);
+            gr.Clear(Color.LightSalmon);
+            gr.DrawString($"????", Font, Brushes.Black, 2, 2);
         }
 
         /// <inheritdoc />
@@ -336,7 +269,7 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"DefaultClip:[{Id}]";
+            return $"DefaultClip:[{_data}]";
         }
     }
 }

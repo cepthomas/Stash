@@ -241,8 +241,9 @@ namespace WinClip
         #endregion
 
 
+
         /// <summary>
-        /// Handle window messages.
+        /// Handle window messages - clipboard changes and hotkeys.
         /// </summary>
         /// <param name="msg"></param>
         protected override void WndProc(ref Message msg)
@@ -313,16 +314,6 @@ namespace WinClip
                             if (((DateTime.Now - _lastBmpTime).TotalMilliseconds > cutoff) || bmp.Size != _lastBmpSize)
                             {
                                 // Not the same so assume valid.
-
-                                //if(_fit) // FitHeight TODO1 probably should be in sel or other lib
-                                //{
-                                //    float ratio = (float)_itemdSize.Height / bmp.Height;
-                                //    int tnWidth = (int)(bmp.Width * ratio);
-                                //    int tnHeight = (int)(bmp.Height * ratio);
-                                //    var bmpt = MiscUtils.ResizeBitmap(bmp, tnWidth, tnHeight);
-                                //    bmp = bmpt.Clone(new(0, 0, _itemdSize.Width, _itemdSize.Height), PixelFormat.Format32bppArgb);
-                                //}
-
                                 clip = new ImageClip(dobj);
                             }
                             //else a suspect, wait
@@ -344,8 +335,7 @@ namespace WinClip
                         if (clip != null)
                         {
                             // Show it.
-                            AddClip(clip);
-                            //_logger.Debug($"New clip:{clip}");
+                            selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
                             Invalidate();
                         }
 
@@ -382,7 +372,7 @@ namespace WinClip
 
             // Get current window.
             var fgi = GetWindowInfo(WM.ForegroundWindow);
-            _logger.Debug($">>> WM_HOTKEY_MESSAGE_ID {fgi}");
+            _logger.Debug($"WM_HOTKEY_MESSAGE_ID {fgi}");
 
             // Show UI to let user pick a clip to paste.
             WindowState = FormWindowState.Normal;
@@ -390,14 +380,7 @@ namespace WinClip
             m.Result = -1; // means handled?
         }
 
-        /// <summary>
-        /// Add a new clip for viewing.
-        /// </summary>
-        /// <param name="clip"></param>
-        void AddClip(ClipBase clip)
-        {
-            selector.AddUserItem("", clip.Thumbnail, clip, 0); //TODO1 tooltip text?
-        }
+
 
         #region Privates
         /// <summary>
