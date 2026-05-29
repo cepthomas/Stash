@@ -19,7 +19,9 @@ using W32 = Ephemera.Win32.Internals;
 using WM = Ephemera.Win32.WindowManagement;
 
 
-// TODO1 - Frequently throws System.ExecutionEngineException. Previously indicated
+// TODO persist the clip data?
+
+// TODO - Frequently throws System.ExecutionEngineException. Previously indicated
 // an unspecified fatal error in the runtime. MS says: The runtime no longer raises
 // this exception so this type is obsolete.
 // Other gleanings:
@@ -56,9 +58,6 @@ namespace WinClip
 
         /// <summary>Handle to the window event hook.</summary>
         readonly IntPtr _winEventHook = IntPtr.Zero;
-
-        /// <summary>Dev.</summary>
-        Dev _dev = new(); // TODO1
         #endregion
 
         #region Workarounds 
@@ -108,54 +107,29 @@ namespace WinClip
             selector.Init(config);
             ClipBase.ClipSize = _settings.ClipSize;
 
-            // Hook selector events.
+            // Selector events.
             selector.Click += Selector_Click;
-
-            // Selector menu. TODO1 need a way to delete clip - probably should be in sel lib
             selector.ContextMenuStrip = new();
-            selector.ContextMenuStrip.Items.Add("Remove");
-            selector.ContextMenuStrip.ItemClicked += Menu_ItemClicked;
+            selector.ContextMenuStrip.Opening += ContextMenuStrip_Opening;
+            selector.ContextMenuStrip.ItemClicked += ContextMenuStrip_ItemClicked;
 
-            // Init the data. TODO1 persisted?
-            //_settings.Targets.ForEach(item => selector.AddResourceItem(item));
-
-            // Size and location. TODO1 always/popup/? user option?
-            FormBorderStyle = FormBorderStyle.FixedToolWindow; // SizableToolWindow
-            StartPosition = FormStartPosition.Manual;
-            // Calc client area.
-            var area = selector.GetTotalArea();
-            Size = new(area.Width + SystemInformation.VerticalScrollBarWidth, 600);
+            // TODO Best way to start up? maybe setting?
+            ShowInTaskbar = true;
+            ShowIcon = true;
             WindowState = FormWindowState.Normal;
             //WindowState = FormWindowState.Minimized;
-            var pos = Cursor.Position;
-            Location = new Point(200, 200);
+            FormBorderStyle = FormBorderStyle.FixedToolWindow; // SizableToolWindow
+            Size = new(selector.GetTotalArea().Width + SystemInformation.VerticalScrollBarWidth, 600);
+            StartPosition = FormStartPosition.Manual;
+            Location = new(Screen.PrimaryScreen!.Bounds.Width / 2 - Width / 2, Screen.PrimaryScreen!.Bounds.Height - Height - 50); // taskbar
 
-            ///// System hooks.
+            // System hooks.
             // Listen for window changes.
             _winEventHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero,
                 WindowEventCallback, 0, 0, WINEVENT_OUTOFCONTEXT); // | WINEVENT_SKIPOWNPROCESS);
             if (_winEventHook == IntPtr.Zero) { throw new Win32Exception(Marshal.GetLastWin32Error()); }
-
             // Listen for clipboard changes.
             var res = AddClipboardFormatListener(Handle);
-        }
-
-        /// <summary>
-        /// User wants to do something.
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void Menu_ItemClicked(object? sender, ToolStripItemClickedEventArgs e)
-        {
-            selector.ContextMenuStrip!.Close();
-
-            switch (e.ClickedItem!.Text)
-            {
-                case "Remove": // TODO1 ??
-                    //var sels = selector.GetSelectedItems();
-                    //sels.ForEach(sel => selector.RemoveItem(sel));
-                    break;
-            }
         }
 
         /// <summary>
@@ -237,10 +211,57 @@ namespace WinClip
                 }
             }
         }
+
+        /// <summary>
+        /// User wants to do something.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void ContextMenuStrip_Opening(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            selector.ContextMenuStrip!.Items.Clear();
+            selector.ContextMenuStrip.Items.Add("Clear All");
+            selector.ContextMenuStrip.Items.Add("Settings");
+
+            if (selector.GetFocusedItem() != null)
+            {
+                selector.ContextMenuStrip.Items.Add("Remove");
+            }
+        }
+
+        /// <summary>
+        /// User wants to do something.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        void ContextMenuStrip_ItemClicked(object? sender, ToolStripItemClickedEventArgs e)
+        {
+            selector.ContextMenuStrip!.Close();
+
+            switch (e.ClickedItem!.Text)
+            {
+                case "Clear All":
+                    selector.GetAllItems().ForEach(item => selector.RemoveItem(item));
+                    break;
+
+                case "Settings":
+                    var changes = SettingsEditor.Edit(_settings, "User Settings", 450);
+                    MessageBox.Show("Restart required for changes to take effect");
+                    _settings.Save();
+                    break;
+
+                case "Remove":
+                    var item = selector.GetFocusedItem();
+                    if (item != null)
+                    {
+                        selector.RemoveItem(item);
+                    }
+                    break;
+            }
+        }
         #endregion
 
-
-
+        #region Windows low level interaction
         /// <summary>
         /// Handle window messages - clipboard changes and hotkeys.
         /// </summary>
@@ -296,7 +317,7 @@ namespace WinClip
                         ClipBase? clip = null;
 
                         var fmts = dobj.GetFormats();
-                        _dev.Tell($"Copy op: {string.Join("|", fmts)}");
+                        Tell($"Copy op: {string.Join("|", fmts)}");
                         if (fmts.Contains(ImageClip.TypeName))
                         {
                             // Hacks to work around win11 bug in KB5079473 that causes system Print Screen to generate
@@ -368,7 +389,6 @@ namespace WinClip
         void DoHotkey(Message m)
         {
             // Could decode if we needed to handle more than one.
-
             // Get current window.
             var fgi = GetWindowInfo(WM.ForegroundWindow);
             _logger.Debug($"WM_HOTKEY_MESSAGE_ID {fgi}");
@@ -378,28 +398,6 @@ namespace WinClip
 
             m.Result = -1; // means handled?
         }
-
-        #region Privates
-        /// <summary>
-        /// Just for debugging.
-        /// </summary>
-        /// <param name="s"></param>
-        void Tell(string s)
-        {
-            // TODO1 ?? this.InvokeIfRequired(_ => { _log.Add(s + Environment.NewLine); });
-        }
-
-        /// <summary>
-        /// Edit the options in a property grid.
-        /// </summary>
-        void Settings_Click(object? sender, EventArgs e)
-        {
-            var changes = SettingsEditor.Edit(_settings, "User Settings", 450);
-            MessageBox.Show("Restart required for changes to take effect");
-            _settings.Save();
-        }
-        #endregion
-
 
         /// <summary>
         /// Keeps track of foreground window for paste ops.
@@ -411,10 +409,12 @@ namespace WinClip
             if (winfo.IsVisible && winfo.ProcessName != "WinClip" && winfo.ProcessName != "explorer")
             {
                 _pasteWin = hwnd;
-                _dev.Tell($"Set _pasteWin: {_pasteWin} [{GetWindowInfo(_pasteWin).ProcessName}]");
+                Tell($"Set _pasteWin: {_pasteWin} [{GetWindowInfo(_pasteWin).ProcessName}]");
             }
         }
+        #endregion
 
+        #region Privates
         /// <summary>
         /// Get pertinent bits of info for a window.
         /// </summary>
@@ -429,42 +429,15 @@ namespace WinClip
             return winfo;
         }
 
-        ///// <summary>Do debug stuff.</summary>
-        ///// <param name="sender"></param>
-        ///// <param name="e"></param>
-        //void Debug_Click(object sender, EventArgs e)
-        //{
-        //    _dev.Show();
-        //    for (int i = 0; i < 20; i++)
-        //    {
-        //        var sdir = MiscUtils.GetSourcePath();
-        //        var fn = Path.Combine(sdir, "Test", "ross.txt");
-
-        //        var clip = new PlainTextClip(new DataObject(File.ReadAllText(fn)));
-        //        selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
-
-        //        fn = Path.Combine(sdir, "Test", "ex.rtf");
-        //        clip = new RtfTextClip(new DataObject(RtfTextClip.TypeName, (File.ReadAllText(fn))));
-        //        selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
-
-        //        fn = Path.Combine(sdir, "Test", "ex.png");
-        //        clip = new ImageClip(new DataObject(Bitmap.FromFile(fn)));
-        //        selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
-        //    }
-
-        //    // foreach (var clipd in _clips)
-        //    // {
-        //    //     _dev.Tell(clipd.Clip.Format());
-        //    // }
-
-        //    //List<IntPtr> appwins = WM.GetTopWindows(false);
-        //    //foreach (IntPtr appwin in appwins)
-        //    //{
-        //    //    var winfo = GetWindowInfo(appwin);
-        //    //    tvInfo.Append(winfo.ToString());
-        //    //}
-        //}
-
+        /// <summary>
+        /// Just for debugging.
+        /// </summary>
+        /// <param name="s"></param>
+        void Tell(string s)
+        {
+            Console.WriteLine(s);
+        }
+        #endregion
 
         #region Native
         private const int WINEVENT_INCONTEXT = 4;
@@ -492,5 +465,10 @@ namespace WinClip
         [DllImport("user32.dll")]
         private static extern uint GetClipboardSequenceNumber();
         #endregion
+
+        private void btnClear_Click(object sender, EventArgs e)
+        {
+
+        }
     }
 }

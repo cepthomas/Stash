@@ -205,7 +205,7 @@ namespace WinClip
     {
         #region Properties
         /// <summary>Actual content.</summary>
-        public Bitmap Content { get; private set; }
+        public string Content { get; private set; }
         #endregion
 
         #region Fields
@@ -219,7 +219,7 @@ namespace WinClip
         public DefaultClip(IDataObject? data)
         {
             _data = data;
-            //var formats = data.GetFormats();
+            Content = string.Join(Environment.NewLine, data.GetFormats());
 
             // Default thumbnail.
             Thumbnail = new(ClipSize.Width, ClipSize.Height);
