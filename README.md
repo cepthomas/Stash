@@ -1,6 +1,5 @@
-# WinClip
+# Stash
 
-Experiments with clipboard manager. Very much a WIP...
+Experiments with win11 clipboard.
 
-TODO1 rename since it fights with the audio clip apps.
 

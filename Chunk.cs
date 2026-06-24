@@ -12,37 +12,37 @@ using Ephemera.NBagOfTricks;
 using Ephemera.NBagOfUis;
 
 
-namespace WinClip
+namespace Stash
 {
-    /// <summary>Abstract base class for all clip types.</summary>
+    /// <summary>Abstract base class for all chunk types.</summary>
     [Serializable]
-    public abstract class ClipBase
+    public abstract class ChunkBase
     {
         #region Properties
         /// <summary>For display.</summary>
         public Bitmap Thumbnail { get; protected set; }
 
         /// <summary>Common - set by client.</summary>
-        public static Size ClipSize
+        public static Size ChunkSize
         {
-            get { return _clipSize; }
-            set { _clipSize = value; _shortTextLen = _clipSize.Width * _clipSize.Height / 32; }
+            get { return _chunkSize; }
+            set { _chunkSize = value; _shortTextLen = _chunkSize.Width * _chunkSize.Height / 32; }
         }
         #endregion
 
         #region Fields
         /// <summary>Backing field.</summary>
-        static Size _clipSize = new();
+        static Size _chunkSize = new();
 
         /// <summary>Truncated text to show.</summary>
         protected static int _shortTextLen = 50;
         #endregion
 
         /// <summary>Constructor</summary>
-        protected ClipBase()
+        protected ChunkBase()
         {
             // Default thumbnail.
-            Thumbnail = new(ClipSize.Width, ClipSize.Height);
+            Thumbnail = new(ChunkSize.Width, ChunkSize.Height);
         }
 
         #region Abstract members
@@ -56,7 +56,7 @@ namespace WinClip
 
     /// <summary>Plain text.</summary>
     [Serializable]
-    public class PlainTextClip : ClipBase
+    public class PlainTextChunk : ChunkBase
     {
         #region Properties
         /// <summary>Actual content.</summary>
@@ -72,7 +72,7 @@ namespace WinClip
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public PlainTextClip(IDataObject data)
+        public PlainTextChunk(IDataObject data)
         {
             var sdata = data.GetData(TypeName);
             Content = (string)sdata!;
@@ -84,7 +84,7 @@ namespace WinClip
                 BorderStyle = BorderStyle.None,
                 WordWrap = false,
                 Text = text,
-                Size = ClipSize,
+                Size = ChunkSize,
                 //Font = DisplayFont,
                 ScrollBars = RichTextBoxScrollBars.None
             };
@@ -102,13 +102,13 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"PlainTextClip:[{Content.Left(_shortTextLen)}]";
+            return $"PlainTextChunk:[{Content.Left(_shortTextLen)}]";
         }
     }
 
     /// <summary>RTF text.</summary>
     [Serializable]
-    public class RtfTextClip : ClipBase
+    public class RtfTextChunk : ChunkBase
     {
         #region Properties
         /// <summary>Actual content.</summary>
@@ -126,7 +126,7 @@ namespace WinClip
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public RtfTextClip(IDataObject data)
+        public RtfTextChunk(IDataObject data)
         {
             var sdata = data.GetData(TypeName);
             Content = (string)sdata!;
@@ -136,7 +136,7 @@ namespace WinClip
                 Rtf = Content,
                 WordWrap = false,
                 BorderStyle = BorderStyle.None,
-                Size = ClipSize,
+                Size = ChunkSize,
                 ScrollBars = RichTextBoxScrollBars.None
             };
             _shortText = rtb.Text.Left(_shortTextLen);
@@ -153,13 +153,13 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"RtfTextClip:[{_shortText}]";
+            return $"RtfTextChunk:[{_shortText}]";
         }
     }
 
     /// <summary>Image.</summary>
     [Serializable]
-    public class ImageClip : ClipBase
+    public class ImageChunk : ChunkBase
     {
         #region Properties
         /// <summary>Actual content.</summary>
@@ -175,14 +175,14 @@ namespace WinClip
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public ImageClip(IDataObject data)
+        public ImageChunk(IDataObject data)
         {
             var idata = data.GetData(TypeName);
             Content = (Bitmap)idata!;
             // Make a thumbnail scaled to available real estate.
-            float ratio = (float)ClipSize.Height / Content.Height;
+            float ratio = (float)ChunkSize.Height / Content.Height;
             int tnWidth = (int)(Content.Width * ratio);
-            int tnHeight = ClipSize.Height;
+            int tnHeight = ChunkSize.Height;
             Thumbnail = MiscUtils.ResizeBitmap(Content, tnWidth, tnHeight);
         }
 
@@ -195,13 +195,13 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"ImageClip:[{Content.Size}]";
+            return $"ImageChunk:[{Content.Size}]";
         }
     }
 
     /// <summary>Could be unknown/empty/unsupported.</summary>
     [Serializable]
-    public class DefaultClip : ClipBase
+    public class DefaultChunk : ChunkBase
     {
         #region Properties
         /// <summary>Actual content.</summary>
@@ -209,20 +209,20 @@ namespace WinClip
         #endregion
 
         #region Fields
-        readonly IDataObject? _data = null;
+        readonly IDataObject _data;
         #endregion
 
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="data"></param>
-        public DefaultClip(IDataObject? data)
+        public DefaultChunk(IDataObject data)
         {
             _data = data;
             Content = string.Join(Environment.NewLine, data.GetFormats());
 
             // Default thumbnail.
-            Thumbnail = new(ClipSize.Width, ClipSize.Height);
+            Thumbnail = new(ChunkSize.Width, ChunkSize.Height);
             using Graphics gr = Graphics.FromImage(Thumbnail);
             gr.Clear(Color.LightSalmon);
             //gr.DrawString($"????", this.Font, Brushes.Black, 2, 2);
@@ -237,7 +237,7 @@ namespace WinClip
         /// <summary>For viewing pleasure.</summary>
         public override string ToString()
         {
-            return $"DefaultClip:[{_data}]";
+            return $"DefaultChunk:[{_data}]";
         }
     }
 }

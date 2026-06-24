@@ -19,7 +19,7 @@ using W32 = Ephemera.Win32.Internals;
 using WM = Ephemera.Win32.WindowManagement;
 
 
-// TODO persist the clip data?
+// TODO persist the chunk data?
 
 // TODO - Frequently throws System.ExecutionEngineException. Previously indicated
 // an unspecified fatal error in the runtime. MS says: The runtime no longer raises
@@ -31,7 +31,38 @@ using WM = Ephemera.Win32.WindowManagement;
 //   - Try disable hot reload/edit & continue.
 
 
-namespace WinClip
+// public Dev() TODO1
+//    for (int i = 0; i < 20; i++)
+//    {
+//        var sdir = MiscUtils.GetSourcePath();
+//        var fn = Path.Combine(sdir, "Test", "ross.txt");
+
+//        var chunk = new PlainTextChunk(new DataObject(File.ReadAllText(fn)));
+//        selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
+
+//        fn = Path.Combine(sdir, "Test", "ex.rtf");
+//        chunk = new RtfTextChunk(new DataObject(RtfTextChunk.TypeName, (File.ReadAllText(fn))));
+//        selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
+
+//        fn = Path.Combine(sdir, "Test", "ex.png");
+//        chunk = new ImageChunk(new DataObject(Bitmap.FromFile(fn)));
+//        selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
+//    }
+
+//    // foreach (var clipd in _clips)
+//    // {
+//    //     _dev.Tell(clipd.Chunk.Format());
+//    // }
+
+//    //List<IntPtr> appwins = WM.GetTopWindows(false);
+//    //foreach (IntPtr appwin in appwins)
+//    //{
+//    //    var winfo = GetWindowInfo(appwin);
+//    //    tvInfo.Append(winfo.ToString());
+//    //}
+
+
+namespace Stash
 {
     /// <summary>
     /// - Handles all interactions at the Clipboard.XXX() API level.
@@ -72,25 +103,24 @@ namespace WinClip
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="args"></param>
-        public MainForm(string[] args)
+        public MainForm(string[] _)
         {
             InitializeComponent();
 
             Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
 
             // Load settings first before initializing.
-            string appDir = MiscUtils.GetAppDataDir("WinClip", "Ephemera");
+            string appDir = MiscUtils.GetAppDataDir("Stash", "Ephemera");
             _settings = (UserSettings)SettingsCore.Load(appDir, typeof(UserSettings));
 
             // Init logging.
             string logFileName = Path.Combine(appDir, "log.txt");
             LogManager.MinLevelFile = _settings.FileLogLevel;
             LogManager.MinLevelNotif = _settings.NotifLogLevel;
-            LogManager.LogMessage += (object? sender, LogMessageEventArgs e) => { Tell(e.Message); };
+            LogManager.LogMessage += (sender, e) => { Tell(e.Message); };
             LogManager.Run(logFileName, 50000);
 
-            Text = $"WinClip {MiscUtils.GetVersionString()}";
+            Text = $"Stash {MiscUtils.GetVersionString()}";
 
             // Init selector configuration.
             var config = new Config()
@@ -102,10 +132,10 @@ namespace WinClip
                 Mode = OpMode.Click,
                 Style = SelectorStyle.Clip,
                 NumColumns = 1,
-                ImageSize = _settings.ClipSize,
+                ImageSize = _settings.ChunkSize,
             };
             selector.Init(config);
-            ClipBase.ClipSize = _settings.ClipSize;
+            ChunkBase.ChunkSize = _settings.ChunkSize;
 
             // Selector events.
             selector.Click += Selector_Click;
@@ -170,7 +200,7 @@ namespace WinClip
 
         #region Selector interaction
         /// <summary>
-        /// A clip was clicked.
+        /// A chunk was clicked.
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="e"></param>
@@ -184,16 +214,16 @@ namespace WinClip
                     // Push into sys clipboard which will move it to the top.
                     switch (e.ClickedItem.Value)
                     {
-                        case PlainTextClip pcltxt:
-                            Clipboard.SetData(PlainTextClip.TypeName, pcltxt.Content);
+                        case PlainTextChunk pcltxt:
+                            Clipboard.SetData(PlainTextChunk.TypeName, pcltxt.Content);
                             break;
 
-                        case RtfTextClip pclrtf:
-                            Clipboard.SetData(RtfTextClip.TypeName, pclrtf.Content);
+                        case RtfTextChunk pclrtf:
+                            Clipboard.SetData(RtfTextChunk.TypeName, pclrtf.Content);
                             break;
 
-                        case ImageClip climg:
-                            Clipboard.SetData(ImageClip.TypeName, climg.Content);
+                        case ImageChunk climg:
+                            Clipboard.SetData(ImageChunk.TypeName, climg.Content);
                             break;
 
                         default:
@@ -201,7 +231,7 @@ namespace WinClip
                             break;
                     }
 
-                    // Send paste to the last window that was foreground, since WinClip is now fg.
+                    // Send paste to the last window that was foreground, since Stash is now fg.
                     // Win11 does not allow direct setting of ForegroundWindow. This is now the way:
                     // https://stackoverflow.com/questions/62966320/setforegroundwindow-not-setting-focus
                     var fg = GetWindowInfo(_pasteWin);
@@ -288,7 +318,7 @@ namespace WinClip
         }
 
         /// <summary>
-        /// Handle external clip copy ops.
+        /// Handle external chunk copy ops.
         /// </summary>
         /// <param name="msg"></param>
         void DoClipboardUpdate(Message msg)
@@ -314,48 +344,57 @@ namespace WinClip
                     if (dobj is not null)
                     {
                         // Determine data type - only interested in text and images.
-                        ClipBase? clip = null;
+                        ChunkBase? chunk = null;
 
                         var fmts = dobj.GetFormats();
                         Tell($"Copy op: {string.Join("|", fmts)}");
-                        if (fmts.Contains(ImageClip.TypeName))
+                        if (fmts.Contains(ImageChunk.TypeName))
                         {
                             // Hacks to work around win11 bug in KB5079473 that causes system Print Screen to generate
                             // more than one message. This is a crude way to protect from that until MS fixes the issue.
                             // https://learn.microsoft.com/en-us/answers/questions/5593390/windows-11-25h2-snipping-tool-print-screen-saves-t
-                            // https://learn.microsoft.com/en-us/answers/questions/5831588/there-are-two-copies-of-the-screenshot-in-the-clip
+                            // https://learn.microsoft.com/en-us/answers/questions/5831588/there-are-two-copies-of-the-screenshot-in-the-chunk
                             TimeSpan ts = DateTime.Now - _lastBmpTime;
                             // _logger.Debug($"ts:{ts}");
                             int cutoff = 250; // measured is max 60 msec
 
-                            var img = dobj.GetData(ImageClip.TypeName);
-                            var bmp = img as Bitmap;
+                            var img = dobj.GetData(ImageChunk.TypeName);
 
-                            if (((DateTime.Now - _lastBmpTime).TotalMilliseconds > cutoff) || bmp.Size != _lastBmpSize)
+                            if (img is not null and Bitmap)
                             {
-                                // Not the same so assume valid.
-                                clip = new ImageClip(dobj);
-                            }
-                            //else a suspect, wait
+                                var bmp = (Bitmap)img;
 
-                            // Reset state.
-                            _lastBmpTime = DateTime.Now;
-                            _lastBmpSize = bmp.Size;
+                                if (((DateTime.Now - _lastBmpTime).TotalMilliseconds > cutoff) || bmp.Size != _lastBmpSize)
+                                {
+                                    // Not the same so assume valid - get it.
+                                    chunk = new ImageChunk(dobj);
+                                }
+                                // else a suspect, wait
+
+                                // Reset state.
+                                _lastBmpTime = DateTime.Now;
+                                _lastBmpSize = bmp.Size;
+                            }
+                            else
+                            {
+                                // Reset state.
+                                _lastBmpTime = DateTime.Now;
+                            }
                         }
-                        else if (fmts.Contains(RtfTextClip.TypeName))
+                        else if (fmts.Contains(RtfTextChunk.TypeName))
                         {
-                            clip = new RtfTextClip(dobj);
+                            chunk = new RtfTextChunk(dobj);
                         }
-                        else if (fmts.Contains(PlainTextClip.TypeName))
+                        else if (fmts.Contains(PlainTextChunk.TypeName))
                         {
-                            clip = new PlainTextClip(dobj);
+                            chunk = new PlainTextChunk(dobj);
                         }
                         // else ignore
 
-                        if (clip != null)
+                        if (chunk != null)
                         {
                             // Show it.
-                            selector.AddUserItem("nada", clip.Thumbnail, clip, 0);
+                            selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
                             Invalidate();
                         }
 
@@ -393,7 +432,7 @@ namespace WinClip
             var fgi = GetWindowInfo(WM.ForegroundWindow);
             _logger.Debug($"WM_HOTKEY_MESSAGE_ID {fgi}");
 
-            // Show UI to let user pick a clip to paste.
+            // Show UI to let user pick a chunk to paste.
             WindowState = FormWindowState.Normal;
 
             m.Result = -1; // means handled?
@@ -406,7 +445,7 @@ namespace WinClip
         {
             var winfo = GetWindowInfo(hwnd);
 
-            if (winfo.IsVisible && winfo.ProcessName != "WinClip" && winfo.ProcessName != "explorer")
+            if (winfo.IsVisible && winfo.ProcessName != "Stash" && winfo.ProcessName != "explorer")
             {
                 _pasteWin = hwnd;
                 Tell($"Set _pasteWin: {_pasteWin} [{GetWindowInfo(_pasteWin).ProcessName}]");
@@ -465,10 +504,5 @@ namespace WinClip
         [DllImport("user32.dll")]
         private static extern uint GetClipboardSequenceNumber();
         #endregion
-
-        private void btnClear_Click(object sender, EventArgs e)
-        {
-
-        }
     }
 }

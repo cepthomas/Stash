@@ -10,22 +10,22 @@ using Ephemera.NBagOfUis;
 using Ephemera.IconicSelector;
 
 
-namespace WinClip
+namespace Stash
 {
     [Serializable]
     public sealed class UserSettings : SettingsCore
     {
         #region Persisted Editable Properties
-        [DisplayName("Max Clips")]
-        [Description("Max size of clip cache.")]
-        public int MaxClips { get; set; } = 20;
+        [DisplayName("Max Chunks")]
+        [Description("Max size of cache.")]
+        public int MaxChunks { get; set; } = 20;
 
-        [DisplayName("Clip Size")]
+        [DisplayName("Chunk Size")]
         [Description("Size in UI.")]
-        public Size ClipSize { get; set; } = new(200, 80);
+        public Size ChunkSize { get; set; } = new(200, 80);
 
         [DisplayName("Display Font")]
-        [Description("The font to use for plain text clip displays.")]
+        [Description("The font to use for plain text chunk displays.")]
         [JsonConverter(typeof(JsonFontConverter))]
         public Font DisplayFont { get; set; } = new("Consolas", 12, FontStyle.Regular, GraphicsUnit.Point, 0);
 

@@ -4,7 +4,7 @@ using Ephemera.NBagOfUis;
 using Ephemera.IconicSelector;
 
 
-namespace WinClip
+namespace Stash
 {
     partial class MainForm
     {
