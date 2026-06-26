@@ -21,7 +21,7 @@ using WM = Ephemera.Win32.WindowManagement;
 
 // TODO persist the chunk data?
 
-// TODO - Frequently throws System.ExecutionEngineException. Previously indicated
+// TODO ? - Frequently throws System.ExecutionEngineException. Previously indicated
 // an unspecified fatal error in the runtime. MS says: The runtime no longer raises
 // this exception so this type is obsolete.
 // Other gleanings:
@@ -29,37 +29,6 @@ using WM = Ephemera.Win32.WindowManagement;
 //   Visual Studio debugger throws an ExecutionEngineException and automatically triggers the
 //   fatalExecutionEngineError managed debugging assistant (MDA).
 //   - Try disable hot reload/edit & continue.
-
-
-// public Dev() TODO1
-//    for (int i = 0; i < 20; i++)
-//    {
-//        var sdir = MiscUtils.GetSourcePath();
-//        var fn = Path.Combine(sdir, "Test", "ross.txt");
-
-//        var chunk = new PlainTextChunk(new DataObject(File.ReadAllText(fn)));
-//        selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
-
-//        fn = Path.Combine(sdir, "Test", "ex.rtf");
-//        chunk = new RtfTextChunk(new DataObject(RtfTextChunk.TypeName, (File.ReadAllText(fn))));
-//        selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
-
-//        fn = Path.Combine(sdir, "Test", "ex.png");
-//        chunk = new ImageChunk(new DataObject(Bitmap.FromFile(fn)));
-//        selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
-//    }
-
-//    // foreach (var clipd in _clips)
-//    // {
-//    //     _dev.Tell(clipd.Chunk.Format());
-//    // }
-
-//    //List<IntPtr> appwins = WM.GetTopWindows(false);
-//    //foreach (IntPtr appwin in appwins)
-//    //{
-//    //    var winfo = GetWindowInfo(appwin);
-//    //    tvInfo.Append(winfo.ToString());
-//    //}
 
 
 namespace Stash
@@ -475,6 +444,41 @@ namespace Stash
         void Tell(string s)
         {
             Console.WriteLine(s);
+        }
+        #endregion
+
+        #region Leftovers
+        // Some maybe test code.
+        public void Dev()
+        {
+            for (int i = 0; i < 20; i++)
+            {
+                var sdir = MiscUtils.GetSourcePath();
+                var fn = Path.Combine(sdir, "Test", "ross.txt");
+
+                ChunkBase chunk = new PlainTextChunk(new DataObject(File.ReadAllText(fn)));
+                selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
+
+                fn = Path.Combine(sdir, "Test", "ex.rtf");
+                chunk = new RtfTextChunk(new DataObject(RtfTextChunk.TypeName, (File.ReadAllText(fn))));
+                selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
+
+                fn = Path.Combine(sdir, "Test", "ex.png");
+                chunk = new ImageChunk(new DataObject(Bitmap.FromFile(fn)));
+                selector.AddUserItem("nada", chunk.Thumbnail, chunk, 0);
+            }
+
+            // foreach (var clipd in _clips)
+            // {
+            //     _dev.Tell(clipd.Chunk.Format());
+            // }
+
+            //List<IntPtr> appwins = WM.GetTopWindows(false);
+            //foreach (IntPtr appwin in appwins)
+            //{
+            //    var winfo = GetWindowInfo(appwin);
+            //    tvInfo.Append(winfo.ToString());
+            //}
         }
         #endregion
 
